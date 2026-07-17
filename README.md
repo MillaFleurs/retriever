@@ -34,11 +34,20 @@ From this repository:
 
 ```bash
 codex plugin marketplace add /Users/daniel/code/20260717-retriever
+codex plugin add retriever@retriever
 ```
 
 Then install `retriever` from the repo-local marketplace in Codex.
 
 The marketplace manifest is at `.agents/plugins/marketplace.json`; the plugin itself is at `plugins/retriever`.
+
+After publishing this repository on GitHub, users can add the marketplace from
+the GitHub repo instead of a local path:
+
+```bash
+codex plugin marketplace add MillaFleurs/retriever
+codex plugin add retriever@retriever
+```
 
 ## Runtime Commands
 

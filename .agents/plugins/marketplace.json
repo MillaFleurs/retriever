@@ -1,7 +1,7 @@
 {
-  "name": "personal",
+  "name": "retriever",
   "interface": {
-    "displayName": "Personal"
+    "displayName": "Retriever"
   },
   "plugins": [
     {
