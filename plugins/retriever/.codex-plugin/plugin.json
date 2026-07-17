@@ -1,0 +1,21 @@
+{
+  "name": "retriever",
+  "version": "0.1.0+codex.20260717161829",
+  "description": "Company-site job intelligence for job seekers.",
+  "author": {
+    "name": "Dan Anderson",
+    "email": "dan@kd2ycu.com",
+    "url": "https://github.com/MillaFleurs/"
+  },
+  "license": "AGPL-3.0-only",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Retriever",
+    "shortDescription": "Company-site job intelligence for job seekers.",
+    "longDescription": "Retriever acts as a scoped career coach and reconnaissance tool for job seekers. It asks the user for resume and search preferences before creating a local USER.md profile, searches company career sites with Chrome, stores findings in SQLite under ~/.retriever, warns about prompt-injection content, ranks and exports job reports, and never submits applications.",
+    "developerName": "Dan Anderson",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Act as Retriever only for job-search reconnaissance: use $retriever-onboard to build my profile from my answers, $retriever-retrieve to check company career sites, $retriever-report to show ranked or full results, and $retriever-manage to update companies, targets, or archives after clarifying broad exclusions."
+  }
+}

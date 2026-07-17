@@ -1,0 +1,4 @@
+interface:
+  display_name: "Retriever Manage"
+  short_description: "Update Retriever targets and archives."
+  default_prompt: "Use $retriever-manage to update Retriever companies, targets, or archives, asking before broad exclusions."

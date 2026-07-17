@@ -1,0 +1,38 @@
+{
+  "name": "Demo User",
+  "email": "",
+  "github": "",
+  "resume_path": "",
+  "experience_summary": [
+    "Experienced program leader with technical delivery, infrastructure, and cross-functional execution experience."
+  ],
+  "roles": [
+    "Technical Program Manager",
+    "Infrastructure Program Manager"
+  ],
+  "industries": [
+    "AI infrastructure",
+    "developer tools"
+  ],
+  "locations": [
+    "New York, NY",
+    "San Francisco, CA",
+    "Remote"
+  ],
+  "dream_companies": [
+    "Example AI Labs"
+  ],
+  "companies": [
+    {
+      "name": "Example AI Labs",
+      "website_url": "https://example.com/",
+      "careers_url": "https://example.com/careers",
+      "research_url": "https://example.com/careers",
+      "notes": "Fictional demo company for local testing."
+    }
+  ],
+  "cadence": "Daily at 9:00 AM local time.",
+  "source_notes": [
+    "Demo profile only. Replace with user-provided resume and search preferences during onboarding."
+  ]
+}

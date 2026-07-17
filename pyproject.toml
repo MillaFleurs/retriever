@@ -1,0 +1,13 @@
+[project]
+name = "retriever-codex-plugin"
+version = "0.1.0"
+description = "Local Codex plugin for company-site job intelligence."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "AGPL-3.0-only"
+authors = [
+  { name = "Dan Anderson", email = "dan@kd2ycu.com" }
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

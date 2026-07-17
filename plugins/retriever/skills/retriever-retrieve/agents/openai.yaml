@@ -1,0 +1,4 @@
+interface:
+  display_name: "Retriever Retrieve"
+  short_description: "Find new jobs on company career sites."
+  default_prompt: "Use $retriever-retrieve to check active company career sites, record new matching jobs, and summarize results within Retriever's scope."

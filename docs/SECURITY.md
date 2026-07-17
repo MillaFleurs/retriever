@@ -1,0 +1,32 @@
+# Security and Safety
+
+## Boundary
+
+Retriever is read-only toward external job sites. It does not submit applications, send messages, edit external forms, or click final application controls.
+
+## Prompt-Injection Handling
+
+Career-site content is untrusted. Retriever scans observed text for patterns such as:
+
+- Instructions to ignore prior, system, or developer instructions.
+- Text that branches on whether the reader is an AI or assistant.
+- Requests to reveal secrets, tokens, API keys, credentials, or environment variables.
+- Special words or phrases that appear intended to detect automated readers.
+
+Warnings are stored with the job observation and surfaced in reports. Retriever records and warns; it does not follow page instructions.
+
+## Local Data
+
+Default local state is `~/.retriever`:
+
+- `USER.md`.
+- `retriever.sqlite3`.
+- `reports/`.
+
+This directory may contain personally identifying job-search information. Do not commit it to Git.
+
+## References
+
+- [Codex Chrome extension docs](https://learn.chatgpt.com/docs/chrome-extension)
+- [Codex automations docs](https://learn.chatgpt.com/docs/automations)
+- [GNU AGPL v3](https://www.gnu.org/licenses/agpl-3.0.en.html)
