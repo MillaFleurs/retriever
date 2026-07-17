@@ -49,7 +49,26 @@ codex plugin marketplace add MillaFleurs/retriever
 codex plugin add retriever@retriever
 ```
 
-## Runtime Commands
+## Use in the Codex App
+
+Retriever is intended to run through the Codex app after installation. A normal user does not need to run the Python runtime commands directly.
+
+1. Open Codex in the ChatGPT desktop app.
+2. Open **Plugins**, install **Retriever**, and start a new Codex chat.
+3. Ask Retriever for the workflow you want, for example:
+
+```text
+Set up my Retriever job-search profile.
+Check my target companies for new jobs.
+Show my full Retriever job report.
+Export my Retriever jobs as an HTML dashboard.
+```
+
+Codex will invoke Retriever's bundled skills and use the local runtime under the hood. Live career-site retrieval still requires the Chrome plugin to be installed and enabled.
+
+References: [Codex plugins docs](https://learn.chatgpt.com/docs/plugins), [Codex skills and plugins docs](https://learn.chatgpt.com/docs/skills-and-plugins).
+
+## Runtime Commands for Development
 
 Initialize local state:
 
@@ -116,7 +135,7 @@ The first command previews the rows that would be deleted. The second command pe
 - `$retriever-onboard`: create or refresh `USER.md`, ask career-coach intake questions, seed companies.
 - `$retriever-retrieve`: use Chrome to inspect company career sites and record matching jobs.
 - `$retriever-manage`: update companies, targets, cadence, archive state, and explicit reset requests.
-- `$retriever-report`: export Markdown or CSV reports.
+- `$retriever-report`: export Markdown, CSV, or HTML reports.
 
 ## Storage
 
