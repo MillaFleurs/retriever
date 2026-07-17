@@ -24,6 +24,16 @@ This project targets "Apps for Your Life" for the OpenAI Devpost hackathon. The 
 
 Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 
+## How Codex and GPT-5.6 Were Used
+
+Retriever was built as a human-directed, Codex-implemented project.
+
+- Dan Anderson wrote the product specifications, chose the job-search workflow, set the safety boundary that Retriever must never submit applications, and performed bug testing and QA.
+- Codex generated the repository implementation: plugin metadata, Retriever skills, SQLite runtime, report exporters, dashboard output, tests, documentation, and release-support assets.
+- GPT-5.6 reasoning in Codex was used to translate the human product direction into implementation decisions, repair bugs found during QA, and keep the plugin scoped to local job-search intelligence rather than application submission.
+
+Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules). The repository history records the implementation changes as commits in this project.
+
 ## Requirements
 
 - macOS for the first release.
