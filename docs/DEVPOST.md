@@ -17,9 +17,8 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 - Explanation of how Codex was used.
 - Clear note that Retriever does not submit applications.
 
-## 1.0 Gaps
+## Post-1.0 Gaps
 
 - Live company career-site retrieval needs an end-to-end Chrome run.
 - Scheduled automation should be configured after the user chooses cadence.
 - XLSX or DOCX report exports can be added after CSV, Markdown, and HTML stabilize.
-- GitHub remote should be added after local 1.0 readiness.
