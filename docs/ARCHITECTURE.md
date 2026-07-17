@@ -57,6 +57,8 @@ A full profile or database wipe is intentionally not inferred from "start fresh 
 
 The default report returns the full visible database. Ranked reports can be limited for readability, but they must disclose how many visible jobs are not shown inline and offer the full report or CSV export.
 
+Report formats are Markdown for chat-readable summaries, CSV for spreadsheet import, and static HTML for a local dashboard that can be opened in a browser without a server.
+
 ## Scheduling
 
 Recurring retrieval should be configured through Codex automations after the user chooses cadence. The scheduled prompt should invoke `$retriever-retrieve`.

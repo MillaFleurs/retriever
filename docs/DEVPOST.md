@@ -21,5 +21,5 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 
 - Live company career-site retrieval needs an end-to-end Chrome run.
 - Scheduled automation should be configured after the user chooses cadence.
-- XLSX or DOCX report exports can be added after CSV and Markdown stabilize.
+- XLSX or DOCX report exports can be added after CSV, Markdown, and HTML stabilize.
 - GitHub remote should be added after local 1.0 readiness.

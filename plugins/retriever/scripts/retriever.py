@@ -228,6 +228,8 @@ def cmd_report(args: argparse.Namespace) -> int:
         rows = rows[: args.limit]
     if args.format == "csv":
         content = reports.jobs_to_csv(rows)
+    elif args.format == "html":
+        content = reports.jobs_to_html(rows, total_count=total_count, ranked=args.ranked)
     else:
         content = reports.jobs_to_markdown(rows, total_count=total_count, ranked=args.ranked)
 
@@ -351,7 +353,7 @@ def build_parser() -> argparse.ArgumentParser:
     reset_jobs.set_defaults(func=cmd_reset_jobs)
 
     report = sub.add_parser("report", help="Export visible jobs.")
-    report.add_argument("--format", choices=["markdown", "csv"], default="markdown")
+    report.add_argument("--format", choices=["markdown", "csv", "html"], default="markdown")
     report.add_argument("--output", default="")
     report.add_argument("--since", default="")
     report.add_argument("--company", default="")

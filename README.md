@@ -11,7 +11,7 @@ Retriever is an intelligence and reconnaissance tool only.
 - It reads and reviews company career sites.
 - It records companies, jobs, targets, retrieval runs, and observations in SQLite.
 - It warns about career-page prompt-injection patterns.
-- It exports Markdown and CSV reports.
+- It exports Markdown, CSV, and static HTML dashboard reports.
 - It does not submit applications, send employer messages, rewrite resumes for listings, or click final application controls.
 
 ## Hackathon Track
@@ -90,6 +90,7 @@ Export reports:
 python3 plugins/retriever/scripts/retriever.py report --format markdown
 python3 plugins/retriever/scripts/retriever.py report --format markdown --ranked --limit 6
 python3 plugins/retriever/scripts/retriever.py report --format csv --output ~/.retriever/reports/jobs.csv
+python3 plugins/retriever/scripts/retriever.py report --format html --ranked --output ~/.retriever/reports/jobs.html
 ```
 
 Archive items:

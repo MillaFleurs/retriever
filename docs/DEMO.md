@@ -12,7 +12,7 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 4. Run a retrieval pass against company career pages with Chrome.
 5. Show new matching jobs or a deterministic fixture if live results are not stable.
 6. Show prompt-injection warning behavior with the scanner.
-7. Export Markdown and CSV reports.
+7. Export Markdown, CSV, and HTML dashboard reports.
 8. Archive a job or category and show that reports hide it.
 9. Show the fresh-start path: preview `reset jobs`, confirm it, then show that profile, companies, and targets remain while job findings are cleared.
 
@@ -30,6 +30,7 @@ python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retrieve
   --url "https://example.com/careers/technical-program-manager" \
   --observed-text "Example fixture for demo only."
 python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retriever-demo report --format markdown --ranked
+python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retriever-demo report --format html --ranked --output /private/tmp/retriever-demo/reports/jobs.html
 ```
 
 Reset only the demo job findings:

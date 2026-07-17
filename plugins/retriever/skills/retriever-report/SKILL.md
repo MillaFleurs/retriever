@@ -31,6 +31,12 @@ CSV report:
 python3 <plugin-root>/scripts/retriever.py report --format csv --output ~/.retriever/reports/jobs.csv
 ```
 
+HTML dashboard:
+
+```bash
+python3 <plugin-root>/scripts/retriever.py report --format html --ranked --output ~/.retriever/reports/jobs.html
+```
+
 Company-specific report:
 
 ```bash
@@ -47,7 +53,7 @@ python3 <plugin-root>/scripts/retriever.py report --since "2026-07-17T00:00:00Z"
 
 For each job, include company, title, location, URL if available, source URL, first seen time, last seen time, and prompt-injection warning status.
 
-If more jobs exist than you present inline, say exactly how many are hidden from the short view and offer the full report or CSV. The default report command without `--limit` returns the full visible database.
+If more jobs exist than you present inline, say exactly how many are hidden from the short view and offer the full report, CSV, or HTML dashboard. The default report command without `--limit` returns the full visible database.
 
 When presenting ranked matches, state that ranking is a heuristic based on active role, industry, and location targets. Do not hide the rest of the database.
 
