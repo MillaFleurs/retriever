@@ -515,6 +515,34 @@ def archive_job(conn: sqlite3.Connection, job_id: int) -> int:
     return cur.rowcount
 
 
+def job_reset_counts(conn: sqlite3.Connection) -> dict[str, int]:
+    """Count the rows a job-findings reset would delete or preserve."""
+    return {
+        "jobs": conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0],
+        "observations": conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0],
+        "retrieval_runs": conn.execute("SELECT COUNT(*) FROM retrieval_runs").fetchone()[0],
+        "companies": conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0],
+        "targets": conn.execute("SELECT COUNT(*) FROM targets").fetchone()[0],
+    }
+
+
+def reset_jobs(conn: sqlite3.Connection) -> dict[str, int]:
+    """Delete job findings and run history while preserving profile targets and companies."""
+    before = job_reset_counts(conn)
+    with conn:
+        conn.execute("DELETE FROM observations")
+        conn.execute("DELETE FROM jobs")
+        conn.execute("DELETE FROM retrieval_runs")
+
+    return {
+        "deleted_jobs": before["jobs"],
+        "deleted_observations": before["observations"],
+        "deleted_retrieval_runs": before["retrieval_runs"],
+        "preserved_companies": before["companies"],
+        "preserved_targets": before["targets"],
+    }
+
+
 def status(conn: sqlite3.Connection, state_dir: str | Path | None = None) -> dict[str, object]:
     active_companies = conn.execute("SELECT COUNT(*) FROM companies WHERE archived = 0").fetchone()[0]
     stored_active_jobs = conn.execute(

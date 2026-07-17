@@ -19,6 +19,16 @@ Do not mention internal skill routing such as "I will use Retriever's workflow."
 4. Never submit applications, send messages, change resumes, or click application submission controls.
 5. Never seed a bundled personal profile. The distributable plugin must not contain a developer resume, developer job preferences, or a default dream-company list.
 
+## Existing State on Reinstall
+
+If `~/.retriever` already exists during install, reinstall, or first wake-up, do not silently archive or delete records. Tell the user existing local state was found and ask which mode they want:
+
+1. Keep existing profile, companies, targets, job findings, and run history.
+2. Keep the profile, companies, and targets but delete job findings and run history with `python3 <plugin-root>/scripts/retriever.py reset jobs` followed by `--confirm-delete` after explicit confirmation.
+3. Full reset, which requires a direct confirmation of exactly which files or database tables should be deleted.
+
+Use the job-findings reset for testing language like "same roles, start fresh with jobs." Do not use archive flags to simulate a clean reinstall.
+
 ## Profile Intake
 
 Collect enough information to create `USER.md`:

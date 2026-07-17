@@ -194,6 +194,29 @@ def cmd_target_preview(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_reset_jobs(args: argparse.Namespace) -> int:
+    conn = db.connect(state_dir_from_args(args))
+    counts = db.job_reset_counts(conn)
+    if not args.confirm_delete:
+        print(
+            db.dump_json(
+                {
+                    "requires_confirmation": True,
+                    "message": "This will permanently delete job findings, observations, and retrieval-run history while preserving USER.md, companies, and targets. Rerun with --confirm-delete only after the user explicitly chooses a fresh job-findings reset.",
+                    "would_delete_jobs": counts["jobs"],
+                    "would_delete_observations": counts["observations"],
+                    "would_delete_retrieval_runs": counts["retrieval_runs"],
+                    "would_preserve_companies": counts["companies"],
+                    "would_preserve_targets": counts["targets"],
+                }
+            )
+        )
+        return 2
+
+    print(db.dump_json(db.reset_jobs(conn)))
+    return 0
+
+
 def cmd_report(args: argparse.Namespace) -> int:
     state_dir = state_dir_from_args(args)
     conn = db.connect(state_dir)
@@ -313,6 +336,19 @@ def build_parser() -> argparse.ArgumentParser:
     target_preview.add_argument("kind", choices=["role", "industry", "location"])
     target_preview.add_argument("value")
     target_preview.set_defaults(func=cmd_target_preview)
+
+    reset = sub.add_parser("reset", help="Delete local Retriever data by explicit scope.")
+    reset_sub = reset.add_subparsers(dest="reset_command", required=True)
+    reset_jobs = reset_sub.add_parser(
+        "jobs",
+        help="Delete job findings and retrieval-run history while preserving USER.md, companies, and targets.",
+    )
+    reset_jobs.add_argument(
+        "--confirm-delete",
+        action="store_true",
+        help="Required to permanently delete job findings after the preview has been shown to the user.",
+    )
+    reset_jobs.set_defaults(func=cmd_reset_jobs)
 
     report = sub.add_parser("report", help="Export visible jobs.")
     report.add_argument("--format", choices=["markdown", "csv"], default="markdown")

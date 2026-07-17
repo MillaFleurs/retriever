@@ -45,6 +45,14 @@ Archive state preserves history and keeps future reports clean.
 
 Broad target archives require a preview and explicit confirmation. A user saying "ignore this job" should archive a specific job ID; a user saying "ignore this kind of job going forward" should first see the matching jobs that would be hidden.
 
+## Reset Semantics
+
+Archive is for hiding jobs, companies, or categories from reports while preserving history. Reset is for explicit fresh-start workflows such as reinstall testing.
+
+`python3 plugins/retriever/scripts/retriever.py reset jobs` previews a job-findings reset. `python3 plugins/retriever/scripts/retriever.py reset jobs --confirm-delete` permanently deletes rows from `jobs`, `observations`, and `retrieval_runs` while preserving `USER.md`, `companies`, and `targets`.
+
+A full profile or database wipe is intentionally not inferred from "start fresh with jobs"; Retriever must ask for exact scope before deleting profile data, companies, targets, or the whole state directory.
+
 ## Reporting
 
 The default report returns the full visible database. Ranked reports can be limited for readability, but they must disclose how many visible jobs are not shown inline and offer the full report or CSV export.

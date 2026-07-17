@@ -14,6 +14,7 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 6. Show prompt-injection warning behavior with the scanner.
 7. Export Markdown and CSV reports.
 8. Archive a job or category and show that reports hide it.
+9. Show the fresh-start path: preview `reset jobs`, confirm it, then show that profile, companies, and targets remain while job findings are cleared.
 
 ## Deterministic Fallback
 
@@ -29,4 +30,12 @@ python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retrieve
   --url "https://example.com/careers/technical-program-manager" \
   --observed-text "Example fixture for demo only."
 python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retriever-demo report --format markdown --ranked
+```
+
+Reset only the demo job findings:
+
+```bash
+python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retriever-demo reset jobs
+python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retriever-demo reset jobs --confirm-delete
+python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retriever-demo status
 ```

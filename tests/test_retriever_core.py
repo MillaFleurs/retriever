@@ -201,6 +201,98 @@ class RetrieverCoreTests(unittest.TestCase):
             self.assertIn("Showing 1 of 2 visible jobs", proc.stdout)
             self.assertIn("Technical Program Manager, Infrastructure", proc.stdout)
 
+    def test_reset_jobs_deletes_findings_but_preserves_profile_targets_and_companies(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = db.connect(tmp)
+            user_md = profile.write_profile(conn, self.demo_profile(), state_dir=tmp)
+            run = db.create_run(conn, notes="fresh-start regression")
+            db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                ),
+                run_id=run["id"],
+                raw_excerpt="Observed on the company careers page.",
+            )
+            db.finish_run(conn, run["id"])
+
+            result = db.reset_jobs(conn)
+
+            self.assertEqual(1, result["deleted_jobs"])
+            self.assertEqual(1, result["deleted_observations"])
+            self.assertEqual(1, result["deleted_retrieval_runs"])
+            self.assertEqual(1, result["preserved_companies"])
+            self.assertGreaterEqual(result["preserved_targets"], 4)
+            self.assertEqual(0, conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0])
+            self.assertEqual(0, conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0])
+            self.assertEqual(0, conn.execute("SELECT COUNT(*) FROM retrieval_runs").fetchone()[0])
+            self.assertEqual(1, len(db.list_companies(conn)))
+            self.assertGreaterEqual(len(db.list_targets(conn)), 4)
+            self.assertTrue(user_md.exists())
+
+    def test_reset_jobs_cli_requires_confirmation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = db.connect(tmp)
+            db.add_target(conn, "role", "Technical Program Manager")
+            run = db.create_run(conn, notes="fresh-start regression")
+            db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                ),
+                run_id=run["id"],
+            )
+            db.finish_run(conn, run["id"])
+
+            preview = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "retriever.py"),
+                    "--state-dir",
+                    tmp,
+                    "reset",
+                    "jobs",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(2, preview.returncode)
+            preview_payload = json.loads(preview.stdout)
+            self.assertTrue(preview_payload["requires_confirmation"])
+            self.assertEqual(1, preview_payload["would_delete_jobs"])
+            self.assertEqual(1, conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0])
+
+            confirmed = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "retriever.py"),
+                    "--state-dir",
+                    tmp,
+                    "reset",
+                    "jobs",
+                    "--confirm-delete",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            result = json.loads(confirmed.stdout)
+            self.assertEqual(1, result["deleted_jobs"])
+
+            conn.close()
+            conn = db.connect(tmp)
+            self.assertEqual(0, conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0])
+            self.assertEqual(0, conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0])
+            self.assertEqual(0, conn.execute("SELECT COUNT(*) FROM retrieval_runs").fetchone()[0])
+            self.assertEqual(1, len(db.list_companies(conn)))
+            self.assertEqual(1, len(db.list_targets(conn)))
+
     def test_target_archive_cli_requires_force_after_preview(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             conn = db.connect(tmp)

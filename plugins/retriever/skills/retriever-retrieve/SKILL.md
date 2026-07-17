@@ -17,6 +17,22 @@ If the user says "wake up Retriever", "run Retriever", "check jobs", or similar,
 
 Before live retrieval, confirm Chrome control is available. If it is unavailable, apologize and tell the user to install or enable the Codex Chrome plugin before running live searches.
 
+## Start-Fresh Requests
+
+If the user asks to "clear out existing jobs", "start fresh", "refresh from scratch", or reinstall for testing while keeping the same profile or roles, do not archive jobs. Preview a job-findings reset:
+
+```bash
+python3 <plugin-root>/scripts/retriever.py reset jobs
+```
+
+After explicit user confirmation, delete the stored job findings and run history:
+
+```bash
+python3 <plugin-root>/scripts/retriever.py reset jobs --confirm-delete
+```
+
+Then continue the retrieval workflow. This reset preserves `USER.md`, companies, and targets. Ask before deleting profile data, companies, targets, or the whole `~/.retriever` directory.
+
 ## Retrieval Workflow
 
 1. Read `~/.retriever/USER.md` and active targets from the SQLite database.

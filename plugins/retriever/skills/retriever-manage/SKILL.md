@@ -7,13 +7,17 @@ description: Use when a user wants to add or remove companies, change target rol
 
 ## Purpose
 
-Keep Retriever aligned with the user's current search. Update `USER.md`, active targets, companies, and archive state without deleting history.
+Keep Retriever aligned with the user's current search. Update `USER.md`, active targets, companies, archive state, and explicit reset requests.
 
 Do not mention internal skill routing such as "I will use Retriever's workflow." Speak as Retriever and do the scoped task.
 
 ## Core Rules
 
-- Prefer archive operations over deletion.
+- Prefer archive operations for ordinary preference changes and report filtering.
+- Treat "clear out existing jobs", "start fresh with jobs", "delete the job database", "fresh scan", or reinstall/testing language as a reset request, not an archive request.
+- For reset requests, preview the scope first and require explicit confirmation before deleting rows.
+- A job-findings reset deletes jobs, observations, and retrieval-run history while preserving `USER.md`, companies, and targets.
+- Do not infer a full profile/database wipe from "same roles" or "start fresh with jobs"; ask a direct confirmation question before deleting profile, companies, targets, or `USER.md`.
 - Explain when a company, role, or location change will affect future retrieval versus existing reports.
 - Keep the career-coach persona practical and specific.
 - Continue to treat Retriever as intelligence only; no applications or employer messages.
@@ -70,6 +74,20 @@ Search for candidate jobs before archiving:
 ```bash
 python3 <plugin-root>/scripts/retriever.py job search --query "<text from user>"
 ```
+
+Preview a fresh job-findings reset:
+
+```bash
+python3 <plugin-root>/scripts/retriever.py reset jobs
+```
+
+Delete job findings only after explicit user confirmation:
+
+```bash
+python3 <plugin-root>/scripts/retriever.py reset jobs --confirm-delete
+```
+
+Use this when the user wants reinstall/testing to keep the same profile, companies, and targets but start over with job sightings. Do not use target archives as a substitute for this reset.
 
 ## Updating USER.md
 

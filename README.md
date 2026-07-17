@@ -101,11 +101,20 @@ python3 plugins/retriever/scripts/retriever.py target preview role "Sales"
 python3 plugins/retriever/scripts/retriever.py target archive --force role "Sales"
 ```
 
+Start fresh with job findings while keeping the profile, companies, and targets:
+
+```bash
+python3 plugins/retriever/scripts/retriever.py reset jobs
+python3 plugins/retriever/scripts/retriever.py reset jobs --confirm-delete
+```
+
+The first command previews the rows that would be deleted. The second command permanently deletes jobs, observations, and retrieval-run history.
+
 ## Skills
 
 - `$retriever-onboard`: create or refresh `USER.md`, ask career-coach intake questions, seed companies.
 - `$retriever-retrieve`: use Chrome to inspect company career sites and record matching jobs.
-- `$retriever-manage`: update companies, targets, cadence, and archive state.
+- `$retriever-manage`: update companies, targets, cadence, archive state, and explicit reset requests.
 - `$retriever-report`: export Markdown or CSV reports.
 
 ## Storage
