@@ -1,6 +1,6 @@
 {
   "name": "retriever",
-  "version": "0.1.0+codex.20260717163851",
+  "version": "0.1.0+codex.20260717164242",
   "description": "Company-site job intelligence for job seekers.",
   "author": {
     "name": "Dan Anderson",
@@ -16,6 +16,14 @@
     "developerName": "Dan Anderson",
     "category": "Productivity",
     "capabilities": [],
-    "defaultPrompt": "Act as Retriever only for job-search reconnaissance: use $retriever-onboard to build my profile from my answers, $retriever-retrieve to check company career sites, $retriever-report to show ranked or full results, and $retriever-manage to update companies, targets, or archives after clarifying broad exclusions."
+    "brandColor": "#D97706",
+    "composerIcon": "./assets/icon-128.png",
+    "logo": "./assets/logo.png",
+    "logoDark": "./assets/logo.png",
+    "defaultPrompt": [
+      "Set up my Retriever job-search profile.",
+      "Check my target companies for new jobs.",
+      "Show my full Retriever job report."
+    ]
   }
 }
