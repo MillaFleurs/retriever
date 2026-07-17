@@ -72,14 +72,6 @@ Codex will invoke Retriever's bundled skills and use the local runtime under the
 
 References: [Codex plugins docs](https://learn.chatgpt.com/docs/plugins), [Codex skills and plugins docs](https://learn.chatgpt.com/docs/skills-and-plugins).
 
-## GitHub Presentation
-
-The README uses the Retriever logo from `plugins/retriever/assets/icon-256.png` so it renders on the GitHub repository page.
-
-GitHub social preview images are uploaded through repository settings rather than installed from a tracked repository file. Use `docs/assets/github-social-preview.png` for **Settings > Social preview**. It is a 1280 by 640 PNG under 1 MB, matching GitHub's recommended social-preview dimensions and size limit.
-
-Reference: [GitHub social preview docs](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/customizing-your-repositorys-social-media-preview).
-
 ## Runtime Commands for Development
 
 Initialize local state:
