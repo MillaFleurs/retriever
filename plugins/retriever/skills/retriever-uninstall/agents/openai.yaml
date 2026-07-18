@@ -1,0 +1,4 @@
+interface:
+  display_name: "Retriever Uninstall"
+  short_description: "Safely remove Retriever schedules."
+  default_prompt: "Use $retriever-uninstall to remove Retriever-owned schedules before I uninstall the plugin."
