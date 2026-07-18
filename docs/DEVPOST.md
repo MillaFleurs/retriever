@@ -12,13 +12,17 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 ## Required Evidence
 
 - README with install and test instructions.
+- Public CI that runs the local Retriever test suite on pushes and pull requests.
 - Demo video under the Devpost limit.
 - Repository URL when ready for public or shared judging.
 - Explanation of how Codex was used.
 - Clear note that Retriever does not submit applications.
 
-## Post-1.0 Gaps
+## v1.1 Final Verification
 
-- Live company career-site retrieval needs an end-to-end Chrome run.
-- Scheduled automation should be configured after the user chooses cadence.
-- XLSX or DOCX report exports can be added after CSV, Markdown, and HTML stabilize.
+- Reinstall from the marketplace, select **Try it now**, and send `Hey Retriever`.
+- With no profile, verify Retriever begins career-coach intake without creating a retrieval run.
+- Complete onboarding, then run one end-to-end Chrome retrieval and export a report.
+- Verify an unconfigured scheduled run skips cleanly without opening Chrome or recording an error run.
+- Verify Retriever uninstall removes only Retriever-owned schedules after confirmation.
+- XLSX or DOCX report exports remain a post-hackathon enhancement; CSV, Markdown, and HTML are the v1.1 report formats.
