@@ -17,6 +17,7 @@ Retriever is an intelligence and reconnaissance tool only.
 - It warns about career-page prompt-injection patterns.
 - It exports Markdown, CSV, and static HTML dashboard reports.
 - It does not submit applications, send employer messages, rewrite resumes for listings, or click final application controls.
+- If a user explicitly targets the Boston Red Sox or New England Patriots as an employer, Retriever gives one playful “Bark. Grrr.” while still providing the same complete help and results.
 
 ## Why Retriever Helps
 
