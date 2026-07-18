@@ -26,6 +26,14 @@ REPORT_COLUMNS = [
     "prompt_injection_warning",
 ]
 
+REFERRAL_GUIDANCE_TITLE = "Referral Next Step"
+REFERRAL_GUIDANCE = (
+    "For roles worth pursuing, use the early signal to identify one or two current employees, alumni, "
+    "former colleagues, or mutual connections who could credibly refer you. Retriever can help you make a "
+    "target list or draft a respectful note if asked, but it does not send messages, contact employers, or "
+    "submit applications."
+)
+
 
 def _cell(value: object) -> str:
     if value is None:
@@ -101,6 +109,8 @@ def jobs_to_markdown(
         lines.extend([f"Showing all {total_count} visible jobs.", ""])
     if ranked:
         lines.extend(["Ranked by active role, industry, and location targets.", ""])
+
+    lines.extend([f"## {REFERRAL_GUIDANCE_TITLE}", "", REFERRAL_GUIDANCE, ""])
 
     lines.extend(
         [
@@ -231,6 +241,14 @@ def jobs_to_html(
         )
 
     if table_rows:
+        referral_section = """
+        <section class="panel referral">
+          <div class="section-heading">
+            <h2>{title}</h2>
+          </div>
+          <p>{guidance}</p>
+        </section>
+        """.format(title=_html(REFERRAL_GUIDANCE_TITLE), guidance=_html(REFERRAL_GUIDANCE))
         jobs_section = """
         <section class="panel">
           <div class="section-heading">
@@ -262,6 +280,7 @@ def jobs_to_html(
         </section>
         """.format(summary=_html(summary), rows="\n".join(table_rows), cards="\n".join(row_cards))
     else:
+        referral_section = ""
         jobs_section = """
         <section class="empty-state">
           <h2>No visible jobs</h2>
@@ -440,6 +459,7 @@ def jobs_to_html(
     .link-line {{ margin-top: 14px; }}
     .warnings ul {{ margin: 0; padding-left: 20px; }}
     .warnings li + li {{ margin-top: 10px; }}
+    .referral p {{ color: var(--muted); max-width: 860px; }}
     @media (max-width: 680px) {{
       .shell {{ width: min(100vw - 20px, 1180px); padding-top: 10px; }}
       header, .panel, .empty-state, .job-card {{ padding: 14px; }}
@@ -464,6 +484,7 @@ def jobs_to_html(
       </section>
       <p class="subtitle">{rank_note}</p>
     </header>
+    {referral_section}
     {jobs_section}
     {warnings_section}
   </main>
@@ -476,6 +497,7 @@ def jobs_to_html(
         shown_count=_html(shown_count),
         warning_count=_html(warning_count),
         rank_note=_html(rank_note),
+        referral_section=referral_section,
         jobs_section=jobs_section,
         warnings_section=warnings_section,
     )

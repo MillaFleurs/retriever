@@ -7,7 +7,7 @@ Retriever recurring runs should be configured through Codex automations after th
 Use this prompt body for a daily job-search automation:
 
 ```text
-Use $retriever-retrieve to check active companies in ~/.retriever for jobs matching the active USER.md profile. Then use $retriever-report to report jobs first seen since the previous scheduled run or since yesterday, whichever is available. Show counts, top ranked matches if there are many results, offer the full database/CSV, ask whether preferences need updates, and do not submit applications or contact employers.
+Use $retriever-retrieve to check active companies in ~/.retriever for jobs matching the active USER.md profile. Then use $retriever-report to report jobs first seen since the previous scheduled run or since yesterday, whichever is available. Show counts, top ranked matches if there are many results, offer the full database/CSV, ask whether the user wants help identifying potential referrers for promising roles, ask whether preferences need updates, and do not submit applications or contact employers.
 ```
 
 ## Guardrails

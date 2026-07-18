@@ -18,6 +18,14 @@ Retriever is an intelligence and reconnaissance tool only.
 - It exports Markdown, CSV, and static HTML dashboard reports.
 - It does not submit applications, send employer messages, rewrite resumes for listings, or click final application controls.
 
+## Why Retriever Helps
+
+Retriever is built around the practical advantage of seeing real company-site postings early. Harvard Business Review's July 15, 2026 article "Are You Biased Toward Job Candidates Who Reply Quickly?" by Eric M. VanEpps and Einav Hart describes research showing that hiring evaluations can be influenced by how quickly candidates respond, not only by credentials or fit.
+
+Retriever helps a job seeker find fresh postings directly on company career pages, evaluate fit quickly, and decide whether to seek a legitimate referral while the role is still new. It does not automate outreach or applications.
+
+Reference: [Harvard Business Review: Are You Biased Toward Job Candidates Who Reply Quickly?](https://hbr.org/2026/07/are-you-biased-toward-job-candidates-who-reply-quickly).
+
 ## Hackathon Track
 
 This project targets "Apps for Your Life" for the OpenAI Devpost hackathon. The project should be judged as a Codex-assisted local productivity plugin for a real job-search workflow.

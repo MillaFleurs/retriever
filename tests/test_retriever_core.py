@@ -196,6 +196,8 @@ class RetrieverCoreTests(unittest.TestCase):
             self.assertNotIn("Technical Program Manager & <Owner>", dashboard)
             self.assertIn("Prompt-Injection Warnings", dashboard)
             self.assertIn("Ranked by active role, industry, and location targets.", dashboard)
+            self.assertIn("Referral Next Step", dashboard)
+            self.assertIn("does not send messages, contact employers, or submit applications", dashboard)
 
     def test_cli_html_report_writes_dashboard_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -232,6 +234,7 @@ class RetrieverCoreTests(unittest.TestCase):
             dashboard = output.read_text(encoding="utf-8")
             self.assertIn("<title>Retriever Job Dashboard</title>", dashboard)
             self.assertIn("Technical Program Manager", dashboard)
+            self.assertIn("Referral Next Step", dashboard)
             self.assertIn("<span>Warnings</span><strong>0</strong>", dashboard)
 
     def test_ranked_limited_report_discloses_hidden_count(self) -> None:
@@ -275,6 +278,8 @@ class RetrieverCoreTests(unittest.TestCase):
             )
             self.assertIn("Showing 1 of 2 visible jobs", proc.stdout)
             self.assertIn("Technical Program Manager, Infrastructure", proc.stdout)
+            self.assertIn("Referral Next Step", proc.stdout)
+            self.assertIn("does not send messages, contact employers, or submit applications", proc.stdout)
 
     def test_reset_jobs_deletes_findings_but_preserves_profile_targets_and_companies(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
