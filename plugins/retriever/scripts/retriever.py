@@ -17,22 +17,66 @@ def state_dir_from_args(args: argparse.Namespace) -> Path:
     return db.ensure_state_dir(args.state_dir)
 
 
+def raw_state_dir_from_args(args: argparse.Namespace) -> Path:
+    return db.resolve_state_dir(args.state_dir)
+
+
+def _setup_required_response(state_dir: Path) -> dict[str, object]:
+    return {
+        "requires_onboarding": True,
+        "message": (
+            "Retriever is not configured for retrieval. Complete interactive onboarding before scanning career sites; "
+            "no retrieval run was created."
+        ),
+        "setup": db.setup_status(state_dir),
+    }
+
+
 def cmd_init(args: argparse.Namespace) -> int:
-    state_dir = state_dir_from_args(args)
+    state_dir = raw_state_dir_from_args(args)
+    setup = db.setup_status(state_dir)
+    if setup["database_exists"] and setup["database_integrity"] != "ok":
+        print(
+            db.dump_json(
+                {
+                    "requires_repair": True,
+                    "message": "Retriever found an unreadable or invalid database. Do not overwrite it automatically; ask the user whether to repair or reset local state.",
+                    "setup": setup,
+                }
+            )
+        )
+        return 2
+    state_dir = db.ensure_state_dir(state_dir)
     conn = db.connect(state_dir)
     print(db.dump_json(db.status(conn, state_dir)))
     return 0
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    state_dir = state_dir_from_args(args)
-    conn = db.connect(state_dir)
-    print(db.dump_json(db.status(conn, state_dir)))
+    print(db.dump_json(db.setup_status(raw_state_dir_from_args(args))))
+    return 0
+
+
+def cmd_setup_status(args: argparse.Namespace) -> int:
+    print(db.dump_json(db.setup_status(raw_state_dir_from_args(args))))
     return 0
 
 
 def cmd_profile_write(args: argparse.Namespace) -> int:
-    state_dir = state_dir_from_args(args)
+    state_dir = raw_state_dir_from_args(args)
+    setup = db.setup_status(state_dir)
+    if setup["database_exists"] and setup["database_integrity"] != "ok":
+        print(
+            db.dump_json(
+                {
+                    "requires_repair": True,
+                    "message": "Retriever found an unreadable or invalid database. Do not overwrite it automatically; ask the user whether to repair or reset local state.",
+                    "setup": setup,
+                }
+            )
+        )
+        return 2
+    state_dir = db.ensure_state_dir(state_dir)
     conn = db.connect(state_dir)
     if args.json == "-":
         payload = json.load(sys.stdin)
@@ -72,15 +116,36 @@ def cmd_company_archive(args: argparse.Namespace) -> int:
 
 
 def cmd_run_start(args: argparse.Namespace) -> int:
-    conn = db.connect(state_dir_from_args(args))
+    state_dir = raw_state_dir_from_args(args)
+    setup = db.setup_status(state_dir)
+    if not setup["ready_for_retrieval"]:
+        print(db.dump_json(_setup_required_response(state_dir)))
+        return 2
+    conn = db.connect(state_dir)
     row = db.create_run(conn, notes=args.notes)
     print(db.dump_json(dict(row)))
     return 0
 
 
 def cmd_run_finish(args: argparse.Namespace) -> int:
-    conn = db.connect(state_dir_from_args(args))
+    state_dir = raw_state_dir_from_args(args)
+    setup = db.setup_status(state_dir)
+    if setup["database_integrity"] != "ok":
+        print(db.dump_json(_setup_required_response(state_dir)))
+        return 2
+    conn = db.connect(state_dir)
     row = db.finish_run(conn, args.run_id, status=args.status, error_count=args.error_count)
+    if row is None:
+        print(
+            db.dump_json(
+                {
+                    "run_not_found": True,
+                    "message": "Retriever could not finish that retrieval run because it does not exist in the current local database.",
+                    "run_id": args.run_id,
+                }
+            )
+        )
+        return 1
     print(db.dump_json(dict(row)))
     return 0
 
@@ -262,8 +327,14 @@ def build_parser() -> argparse.ArgumentParser:
     init = sub.add_parser("init", help="Create the local state directory and SQLite database.")
     init.set_defaults(func=cmd_init)
 
-    status = sub.add_parser("status", help="Show local Retriever state.")
+    status = sub.add_parser("status", help="Show local Retriever setup state without creating it.")
     status.set_defaults(func=cmd_status)
+
+    setup_status = sub.add_parser(
+        "setup-status",
+        help="Check local profile and database integrity before onboarding or retrieval without creating local state.",
+    )
+    setup_status.set_defaults(func=cmd_setup_status)
 
     profile_parser = sub.add_parser("profile", help="Create or update USER.md.")
     profile_sub = profile_parser.add_subparsers(dest="profile_command", required=True)

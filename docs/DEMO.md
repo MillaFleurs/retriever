@@ -6,8 +6,8 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 
 ## Flow
 
-1. Install Retriever from the repo-local marketplace.
-2. Run `$retriever-onboard` and show a user-created `USER.md`.
+1. Install Retriever from the repo-local marketplace, select **Try it now**, and send `Hey Retriever`.
+2. Show Retriever beginning the career-coach intake and creating a user-created `USER.md` only after the user supplies their information.
 3. Show the SQLite-backed company and target state.
 4. Run a retrieval pass against company career pages with Chrome.
 5. Show new matching jobs or a deterministic fixture if live results are not stable.

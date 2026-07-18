@@ -1,6 +1,6 @@
 ---
 name: retriever-onboard
-description: Use when a user first installs Retriever, wants to set up a job-search profile, provides a resume or experience summary, changes target roles or locations, or asks Retriever to act as a career coach before searching company career sites.
+description: Use when a user first installs or reinstalls Retriever, starts with “Hey Retriever”, wants to set up a job-search profile, provides a resume or experience summary, changes target roles or locations, or asks Retriever to act as a career coach before searching company career sites.
 ---
 
 # Retriever Onboard
@@ -13,15 +13,24 @@ Do not mention internal skill routing such as "I will use Retriever's workflow."
 
 ## First-Run Checks
 
-1. Confirm whether Chrome control is available in the current Codex environment.
-2. If Chrome control is unavailable, apologize briefly and tell the user to install or enable the Codex Chrome plugin before live retrieval. You may still draft a profile if the user wants, but do not claim live retrieval will work.
-3. Tell the user Retriever stores local data under `~/.retriever` by default.
-4. Never submit applications, send messages, change resumes, or click application submission controls.
-5. Never seed a bundled personal profile. The distributable plugin must not contain a developer resume, developer job preferences, or a default dream-company list.
+1. Before reading `USER.md`, opening Chrome, or changing state, run:
+
+   ```bash
+   python3 <plugin-root>/scripts/retriever.py setup-status
+   ```
+
+   This check does not create `~/.retriever`, `USER.md`, a database, or a retrieval run.
+2. If no state exists or `fresh_onboarding` is true, welcome the user and begin the profile intake. A blank database or old failed-run history without a profile, targets, companies, or jobs is still a fresh onboarding state. Do not merely list Retriever commands or wait for the user to type a skill name.
+3. If `database_integrity` is not `ok` for an existing database, explain that it is missing, unreadable, or invalid. Do not overwrite it automatically; ask whether the user wants a safe backup/reset plan.
+4. If the state is healthy but incomplete, use `missing_setup` to explain what is missing and ask whether to continue saved setup, reset job findings while retaining the profile, or start over after explicit deletion confirmation. Do not say the user is already onboarded.
+5. Confirm whether Chrome control is available in the current Codex environment. If it is unavailable, apologize briefly and tell the user to install or enable the Codex Chrome plugin before live retrieval. You may still complete onboarding.
+6. Tell the user Retriever stores local data under `~/.retriever` by default.
+7. Never submit applications, send messages, change resumes, or click application submission controls.
+8. Never seed a bundled personal profile. The distributable plugin must not contain a developer resume, developer job preferences, or a default dream-company list.
 
 ## Existing State on Reinstall
 
-If `~/.retriever` already exists during install, reinstall, or first wake-up, do not silently archive or delete records. Tell the user existing local state was found and ask which mode they want:
+If `setup-status` shows a valid, completed profile during install, reinstall, or first wake-up, do not silently archive or delete records. Tell the user existing local state was found and ask which mode they want:
 
 1. Keep existing profile, companies, targets, job findings, and run history.
 2. Keep the profile, companies, and targets but delete job findings and run history with `python3 <plugin-root>/scripts/retriever.py reset jobs` followed by `--confirm-delete` after explicit confirmation.
@@ -31,7 +40,7 @@ Use the job-findings reset for testing language like "same roles, start fresh wi
 
 ## Profile Intake
 
-Collect enough information to create `USER.md`:
+Collect enough information to create `USER.md` and an active company list:
 
 - Resume files or a plain-language work history.
 - Target roles and common title variants.
@@ -66,12 +75,13 @@ Based on the conversation, create an initial company list:
 Resolve the plugin root as the directory two levels above this skill directory. Use:
 
 ```bash
+python3 <plugin-root>/scripts/retriever.py setup-status
 python3 <plugin-root>/scripts/retriever.py init
 python3 <plugin-root>/scripts/retriever.py profile write --json <profile.json>
 python3 <plugin-root>/scripts/retriever.py company add "<company>" --careers-url "<url>" --research-url "<source>"
 ```
 
-The profile JSON must come from this user's current conversation or uploaded documents. For demos, use `examples/demo/profile.json` from the repository, not a real user's profile.
+The profile JSON must come from this user's current conversation or uploaded documents. It must contain `name`, one or more `roles`, one or more `locations`, one or more seeded `companies`, and a `cadence`. For demos, use `examples/demo/profile.json` from the repository, not a real user's profile.
 
 ## Output Standard
 
@@ -81,3 +91,5 @@ End onboarding by telling the user:
 - Which companies were seeded and why.
 - Which cadence is configured or still needs a decision.
 - Any dream-company/location mismatches.
+
+Then run `setup-status` again. Do not say onboarding is complete or offer live retrieval until it returns `ready_for_retrieval: true`.

@@ -15,14 +15,21 @@ from .injection import InjectionWarning
 
 DEFAULT_STATE_DIR = Path.home() / ".retriever"
 TARGET_KINDS = {"role", "industry", "location", "company", "cadence"}
+REQUIRED_TARGET_KINDS = ("role", "location", "cadence")
+REQUIRED_TABLES = {"companies", "jobs", "targets", "retrieval_runs", "observations"}
 
 
 def now_utc() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
+def resolve_state_dir(state_dir: str | Path | None = None) -> Path:
+    """Resolve Retriever's state location without creating files or directories."""
+    return Path(state_dir).expanduser() if state_dir else DEFAULT_STATE_DIR
+
+
 def ensure_state_dir(state_dir: str | Path | None = None) -> Path:
-    path = Path(state_dir).expanduser() if state_dir else DEFAULT_STATE_DIR
+    path = resolve_state_dir(state_dir)
     path.mkdir(parents=True, exist_ok=True)
     (path / "reports").mkdir(exist_ok=True)
     return path
@@ -34,6 +41,136 @@ def db_path(state_dir: str | Path | None = None) -> Path:
 
 def user_md_path(state_dir: str | Path | None = None) -> Path:
     return ensure_state_dir(state_dir) / "USER.md"
+
+
+def state_paths(state_dir: str | Path | None = None) -> tuple[Path, Path, Path]:
+    """Return state, database, and profile paths without mutating local state."""
+    state = resolve_state_dir(state_dir)
+    return state, state / "retriever.sqlite3", state / "USER.md"
+
+
+def _readonly_connection(database: Path) -> sqlite3.Connection:
+    return sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True)
+
+
+def setup_status(state_dir: str | Path | None = None) -> dict[str, object]:
+    """Inspect whether local state is safe and complete enough for retrieval.
+
+    This check intentionally never creates ``~/.retriever``, SQLite files, or a
+    retrieval run. It is the guard used before onboarding and scheduled scans.
+    """
+    state, database, user_md = state_paths(state_dir)
+    result: dict[str, object] = {
+        "state_dir": str(state),
+        "state_directory_exists": state.is_dir(),
+        "database": str(database),
+        "database_exists": database.is_file(),
+        "database_integrity": "missing",
+        "database_integrity_detail": "",
+        "user_md": str(user_md),
+        "user_md_exists": user_md.is_file(),
+        "user_md_integrity": "missing",
+        "active_companies": 0,
+        "active_jobs": 0,
+        "visible_jobs": 0,
+        "active_targets": 0,
+        "active_target_counts": {kind: 0 for kind in TARGET_KINDS},
+        "latest_run": None,
+    }
+
+    if user_md.is_file():
+        try:
+            profile_text = user_md.read_text(encoding="utf-8")
+        except OSError as exc:
+            result["user_md_integrity"] = "unreadable"
+            result["user_md_error"] = str(exc)
+        else:
+            result["user_md_integrity"] = "ok" if "# Retriever User Profile" in profile_text else "invalid"
+
+    if database.is_file():
+        conn: sqlite3.Connection | None = None
+        try:
+            conn = _readonly_connection(database)
+            conn.row_factory = sqlite3.Row
+            quick_check = conn.execute("PRAGMA quick_check").fetchone()[0]
+            foreign_key_errors = list(conn.execute("PRAGMA foreign_key_check"))
+            table_names = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+            missing_tables = sorted(REQUIRED_TABLES - table_names)
+            schema_version = conn.execute("PRAGMA user_version").fetchone()[0]
+
+            if quick_check != "ok":
+                result["database_integrity"] = "invalid"
+                result["database_integrity_detail"] = str(quick_check)
+            elif foreign_key_errors:
+                result["database_integrity"] = "invalid"
+                result["database_integrity_detail"] = "foreign key check failed"
+            elif missing_tables or schema_version < 1:
+                result["database_integrity"] = "invalid"
+                result["database_integrity_detail"] = (
+                    f"missing tables: {', '.join(missing_tables)}" if missing_tables else "unsupported schema version"
+                )
+            else:
+                target_counts = {
+                    kind: conn.execute(
+                        "SELECT COUNT(*) FROM targets WHERE archived = 0 AND kind = ?", (kind,)
+                    ).fetchone()[0]
+                    for kind in TARGET_KINDS
+                }
+                result.update(
+                    {
+                        "database_integrity": "ok",
+                        "active_companies": conn.execute(
+                            "SELECT COUNT(*) FROM companies WHERE archived = 0"
+                        ).fetchone()[0],
+                        "active_jobs": conn.execute(
+                            """
+                            SELECT COUNT(*)
+                            FROM jobs j
+                            JOIN companies c ON c.id = j.company_id
+                            WHERE j.archived = 0 AND c.archived = 0
+                            """
+                        ).fetchone()[0],
+                        "visible_jobs": len(visible_jobs(conn)),
+                        "active_targets": sum(target_counts.values()),
+                        "active_target_counts": target_counts,
+                        "latest_run": (
+                            dict(row)
+                            if (row := conn.execute("SELECT * FROM retrieval_runs ORDER BY id DESC LIMIT 1").fetchone())
+                            else None
+                        ),
+                    }
+                )
+        except (OSError, sqlite3.Error) as exc:
+            result["database_integrity"] = "unreadable"
+            result["database_integrity_detail"] = str(exc)
+        finally:
+            if conn is not None:
+                conn.close()
+
+    missing_setup: list[str] = []
+    if result["user_md_integrity"] != "ok":
+        missing_setup.append("valid USER.md profile")
+    if result["database_integrity"] != "ok":
+        missing_setup.append("valid Retriever database")
+    active_target_counts = result["active_target_counts"]
+    assert isinstance(active_target_counts, dict)
+    for kind in REQUIRED_TARGET_KINDS:
+        if active_target_counts.get(kind, 0) == 0:
+            missing_setup.append(f"active {kind} target")
+    if result["active_companies"] == 0:
+        missing_setup.append("active company")
+
+    result["missing_setup"] = missing_setup
+    result["fresh_onboarding"] = (
+        result["database_integrity"] in {"missing", "ok"}
+        and
+        result["user_md_integrity"] == "missing"
+        and result["active_companies"] == 0
+        and result["active_targets"] == 0
+        and result["active_jobs"] == 0
+    )
+    result["ready_for_retrieval"] = not missing_setup
+    return result
 
 
 def connect(state_dir: str | Path | None = None) -> sqlite3.Connection:

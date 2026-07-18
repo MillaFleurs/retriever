@@ -76,17 +76,18 @@ codex plugin add retriever@retriever
 Retriever is intended to run through the Codex app after installation. A normal user does not need to run the Python runtime commands directly.
 
 1. Open Codex in the ChatGPT desktop app.
-2. Open **Plugins**, install **Retriever**, and start a new Codex chat.
-3. Ask Retriever for the workflow you want, for example:
+2. Open **Plugins**, install **Retriever**, and select **Try it now**.
+3. Send the provided `Hey Retriever` prompt. Retriever checks local setup without creating data; when no saved profile is present, it starts the career-coach intake immediately.
+4. Ask Retriever for the workflow you want, for example:
 
 ```text
-Set up my Retriever job-search profile.
+Hey Retriever
 Check my target companies for new jobs.
 Show my full Retriever job report.
 Export my Retriever jobs as an HTML dashboard.
 ```
 
-Codex will invoke Retriever's bundled skills and use the local runtime under the hood. Live career-site retrieval still requires the Chrome plugin to be installed and enabled.
+Codex will invoke Retriever's bundled skills and use the local runtime under the hood. Installation itself cannot collect a resume or preferences in the background: that information is collected only in the first interactive chat. Live career-site retrieval still requires the Chrome plugin to be installed and enabled.
 
 References: [Codex plugins docs](https://learn.chatgpt.com/docs/plugins), [Codex skills and plugins docs](https://learn.chatgpt.com/docs/skills-and-plugins).
 
@@ -96,6 +97,12 @@ Initialize local state:
 
 ```bash
 python3 plugins/retriever/scripts/retriever.py init
+```
+
+Check whether local state is intact and ready without creating files, directories, database rows, or a retrieval run:
+
+```bash
+python3 plugins/retriever/scripts/retriever.py setup-status
 ```
 
 Use a temporary state directory for demos or tests:
@@ -152,12 +159,22 @@ python3 plugins/retriever/scripts/retriever.py reset jobs --confirm-delete
 
 The first command previews the rows that would be deleted. The second command permanently deletes jobs, observations, and retrieval-run history.
 
+## Uninstall and Scheduled Searches
+
+Before uninstalling Retriever, tell it `Uninstall Retriever and delete its schedules`. Retriever will identify only its own Codex automations, show them for confirmation, and remove them before you use the Plugins UI. By default it preserves `~/.retriever`; choose a separate explicit reset or full-data deletion if you do not want to retain local data.
+
+The Codex plugin documentation describes session hooks, but I found no documented plugin install, post-install, or uninstall lifecycle event. That is why Retriever uses the post-install **Try it now** conversation for onboarding and an explicit uninstall cleanup flow for scheduled automations.
+
+References: [Codex plugins](https://learn.chatgpt.com/docs/plugins), [Build plugins](https://learn.chatgpt.com/docs/build-plugins), [Hooks](https://learn.chatgpt.com/docs/hooks).
+
 ## Skills
 
 - `$retriever-onboard`: create or refresh `USER.md`, ask career-coach intake questions, seed companies.
+- `$retriever-welcome`: handle `Hey Retriever`, safely inspect local state, and start or resume onboarding.
 - `$retriever-retrieve`: use Chrome to inspect company career sites and record matching jobs.
 - `$retriever-manage`: update companies, targets, cadence, archive state, and explicit reset requests.
 - `$retriever-report`: export Markdown, CSV, or HTML reports.
+- `$retriever-uninstall`: remove Retriever-owned schedules after confirmation and guide local-data cleanup.
 
 ## Storage
 

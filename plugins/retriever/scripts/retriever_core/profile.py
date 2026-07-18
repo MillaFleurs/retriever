@@ -9,7 +9,8 @@ from . import db
 
 
 def normalize_profile(payload: dict[str, object]) -> dict[str, object]:
-    required = ["name", "roles", "locations"]
+    """Require the complete onboarding payload before saving local state."""
+    required = ["name", "roles", "locations", "companies", "cadence"]
     missing = [key for key in required if not payload.get(key)]
     if missing:
         raise ValueError(f"profile missing required field(s): {', '.join(missing)}")

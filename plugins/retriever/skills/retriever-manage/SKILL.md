@@ -13,6 +13,8 @@ Do not mention internal skill routing such as "I will use Retriever's workflow."
 
 ## Core Rules
 
+- Before changing state, run `python3 <plugin-root>/scripts/retriever.py setup-status`. If an existing database is invalid or unreadable, do not write, archive, reset, or silently recreate it; explain that an explicit recovery choice is required.
+- If the profile is incomplete, use `missing_setup` to resume onboarding rather than claiming that Retriever is ready to manage a search.
 - Prefer archive operations for ordinary preference changes and report filtering.
 - Treat "clear out existing jobs", "start fresh with jobs", "delete the job database", "fresh scan", or reinstall/testing language as a reset request, not an archive request.
 - For reset requests, preview the scope first and require explicit confirmation before deleting rows.
