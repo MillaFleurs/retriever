@@ -167,10 +167,13 @@ def jobs_to_html(
     *,
     heading: str = "Retriever Job Dashboard",
     total_count: int | None = None,
+    total_job_count: int | None = None,
+    archived_job_count: int = 0,
     ranked: bool = False,
     interactive_archive: bool = False,
     archive_token: str = "",
     archive_notice: str = "",
+    archived_download_url: str = "",
 ) -> str:
     if interactive_archive and not archive_token:
         raise ValueError("interactive dashboards require an archive token")
@@ -178,6 +181,7 @@ def jobs_to_html(
     generated = now_utc()
     shown_count = len(rows)
     visible_count = total_count if total_count is not None else shown_count
+    all_job_count = total_job_count if total_job_count is not None else visible_count + archived_job_count
     warning_count = len(_warning_rows(rows))
     summary = f"Showing {shown_count} of {visible_count} visible jobs." if shown_count != visible_count else f"Showing all {visible_count} visible jobs."
     rank_note = "Ranked by active role, industry, and location targets." if ranked else "Sorted by first seen date."
@@ -336,6 +340,14 @@ def jobs_to_html(
     notice_section = ""
     if archive_notice:
         notice_section = '<p class="notice" role="status">{notice}</p>'.format(notice=_html(archive_notice))
+
+    archived_download = ""
+    if interactive_archive and archived_download_url:
+        archived_download = (
+            '<a class="archive-download" href="{url}">Download archived jobs CSV ({count})</a>'.format(
+                url=_html(archived_download_url), count=_html(archived_job_count)
+            )
+        )
 
     dashboard_description = (
         "This loopback-only dashboard can archive jobs from local Retriever reports after confirmation. "
@@ -516,6 +528,18 @@ def jobs_to_html(
       border: 1px solid currentColor;
       border-radius: 8px;
     }}
+    .archive-download {{
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 8px 10px;
+      border: 1px solid var(--accent-dark);
+      border-radius: 6px;
+      color: var(--accent-dark);
+      font-weight: 700;
+      text-decoration: none;
+    }}
+    .archive-download:hover {{ background: var(--surface-strong); }}
     @media (max-width: 680px) {{
       .shell {{ width: min(100vw - 20px, 1180px); padding-top: 10px; }}
       header, .panel, .empty-state, .job-card {{ padding: 14px; }}
@@ -534,12 +558,14 @@ def jobs_to_html(
       </div>
       <section class="metrics" aria-label="Dashboard summary">
         <div class="metric"><span>Generated</span><strong>{generated}</strong></div>
-        <div class="metric"><span>Visible jobs</span><strong>{visible_count}</strong></div>
-        <div class="metric"><span>Shown here</span><strong>{shown_count}</strong></div>
+        <div class="metric"><span>Total jobs</span><strong>{all_job_count}</strong></div>
+        <div class="metric"><span>Jobs shown</span><strong>{shown_count}</strong></div>
+        <div class="metric"><span>Archived jobs</span><strong>{archived_job_count}</strong></div>
         <div class="metric"><span>Warnings</span><strong>{warning_count}</strong></div>
       </section>
       <p class="subtitle">{rank_note}</p>
       {notice_section}
+      {archived_download}
     </header>
     {referral_section}
     {jobs_section}
@@ -550,8 +576,9 @@ def jobs_to_html(
 """.format(
         heading=_html(heading),
         generated=_html(generated),
-        visible_count=_html(visible_count),
+        all_job_count=_html(all_job_count),
         shown_count=_html(shown_count),
+        archived_job_count=_html(archived_job_count),
         warning_count=_html(warning_count),
         rank_note=_html(rank_note),
         dashboard_description=_html(dashboard_description),
@@ -559,4 +586,5 @@ def jobs_to_html(
         referral_section=referral_section,
         jobs_section=jobs_section,
         warnings_section=warnings_section,
+        archived_download=archived_download,
     )

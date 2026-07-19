@@ -15,7 +15,7 @@ Retriever is an intelligence and reconnaissance tool only.
 - It reads and reviews company career sites.
 - It records companies, jobs, targets, retrieval runs, and observations in SQLite.
 - It warns about career-page prompt-injection patterns.
-- It exports Markdown, CSV, static HTML reports, and a loopback-only interactive dashboard for local job archiving.
+- It exports Markdown, CSV, static HTML reports, and a managed loopback-only interactive dashboard for local job review and archiving.
 - It does not submit applications, send employer messages, rewrite resumes for listings, or click final application controls.
 - If a user explicitly targets the Boston Red Sox or New England Patriots as an employer, Retriever gives one playful “Bark. Grrr.” while still providing the same complete help and results.
 
@@ -85,10 +85,11 @@ Retriever is intended to run through the Codex app after installation. A normal 
 Start my job search
 Check my target companies for new jobs.
 Show my full Retriever job report.
+Open my Retriever job dashboard.
 Export my Retriever jobs as an HTML dashboard.
 ```
 
-Codex will invoke Retriever's bundled skills and use the local runtime under the hood. Installation itself cannot collect a resume or preferences in the background: that information is collected only in the first interactive chat. Live career-site retrieval still requires the Chrome plugin to be installed and enabled.
+Codex will invoke Retriever's bundled skills and use the local runtime under the hood. When a user asks about found jobs, Retriever starts or reuses its local interactive dashboard and shares the URL automatically. Installation itself cannot collect a resume or preferences in the background: that information is collected only in the first interactive chat. Live career-site retrieval still requires the Chrome plugin to be installed and enabled.
 
 References: [Codex plugins docs](https://learn.chatgpt.com/docs/plugins), [Codex skills and plugins docs](https://learn.chatgpt.com/docs/skills-and-plugins).
 
@@ -142,13 +143,19 @@ python3 plugins/retriever/scripts/retriever.py report --format csv --output ~/.r
 python3 plugins/retriever/scripts/retriever.py report --format html --ranked --output ~/.retriever/reports/jobs.html
 ```
 
-Start a local-only interactive dashboard with one confirmation-gated archive button per visible job:
+Start or reuse a local-only interactive dashboard with confirmation-gated archive buttons, total/shown/archived job counts, and archived-job CSV download:
 
 ```bash
-python3 plugins/retriever/scripts/retriever.py dashboard serve --ranked
+python3 plugins/retriever/scripts/retriever.py dashboard start --ranked
 ```
 
-Open the printed `http://127.0.0.1:<port>/` URL while that command is running. Static HTML exports remain read-only.
+The command prints `http://127.0.0.1:<port>/` immediately and keeps the local service running for review. Stop it when finished:
+
+```bash
+python3 plugins/retriever/scripts/retriever.py dashboard stop
+```
+
+Static HTML exports remain read-only.
 
 Archive items:
 

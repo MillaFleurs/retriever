@@ -539,6 +539,29 @@ def visible_jobs(
     )
 
 
+def job_counts(conn: sqlite3.Connection) -> dict[str, int]:
+    """Return dashboard counts across all locally stored job records."""
+    return {
+        "total_jobs": conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0],
+        "directly_archived_jobs": conn.execute("SELECT COUNT(*) FROM jobs WHERE archived = 1").fetchone()[0],
+    }
+
+
+def directly_archived_jobs(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Return jobs explicitly archived by the user, including archived-company records."""
+    return list(
+        conn.execute(
+            """
+            SELECT j.*, c.name AS company_name, c.careers_url AS company_careers_url
+            FROM jobs j
+            JOIN companies c ON c.id = j.company_id
+            WHERE j.archived = 1
+            ORDER BY j.first_seen_at DESC, c.name, j.title
+            """
+        )
+    )
+
+
 def _target_values(conn: sqlite3.Connection, kind: str) -> list[str]:
     return [
         row["value"]

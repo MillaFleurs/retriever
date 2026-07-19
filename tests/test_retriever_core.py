@@ -190,6 +190,16 @@ class RetrieverCoreTests(unittest.TestCase):
         self.assertIn("never invent or infer a search criterion", welcome.lower())
         self.assertIn("do not mention internal setup details", welcome.lower())
 
+    def test_job_results_always_offer_the_interactive_dashboard(self) -> None:
+        manifest = json.loads((ROOT / "plugins" / "retriever" / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        report_skill = (ROOT / "plugins" / "retriever" / "skills" / "retriever-report" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Open my Retriever job dashboard.", manifest["interface"]["defaultPrompt"])
+        self.assertIn("dashboard start --ranked", report_skill)
+        self.assertIn("Always start or reuse", report_skill)
+
     def test_profile_requires_companies_and_cadence_before_it_can_be_saved(self) -> None:
         incomplete = self.demo_profile()
         incomplete.pop("companies")
@@ -407,6 +417,99 @@ class RetrieverCoreTests(unittest.TestCase):
                 self.assertEqual(200, response.status)
                 self.assertIn("Archived job", response.read().decode("utf-8"))
             self.assertEqual(1, conn.execute("SELECT archived FROM jobs WHERE id = ?", (job["id"],)).fetchone()[0])
+
+    def test_dashboard_shows_counts_and_downloads_directly_archived_jobs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            visible, _ = db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                ),
+            )
+            archived, _ = db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Program Manager, Internal Tools",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                    url="https://example.com/careers/internal-tools",
+                ),
+            )
+            self.assertEqual(1, db.archive_job(conn, archived["id"]))
+            server = dashboard.create_dashboard_server(tmp)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            self.addCleanup(server.server_close)
+            self.addCleanup(thread.join, 2)
+            self.addCleanup(server.shutdown)
+            url = f"http://127.0.0.1:{server.server_address[1]}"
+
+            with request.urlopen(f"{url}/", timeout=5) as response:
+                page = response.read().decode("utf-8")
+            self.assertIn("<span>Total jobs</span><strong>2</strong>", page)
+            self.assertIn("<span>Jobs shown</span><strong>1</strong>", page)
+            self.assertIn("<span>Archived jobs</span><strong>1</strong>", page)
+            self.assertIn('href="/archived.csv"', page)
+            self.assertIn(str(visible["id"]), page)
+            self.assertNotIn("Program Manager, Internal Tools", page)
+
+            with request.urlopen(f"{url}/archived.csv", timeout=5) as response:
+                self.assertEqual("text/csv; charset=utf-8", response.headers["Content-Type"])
+                archived_csv = response.read().decode("utf-8")
+            self.assertIn("Program Manager, Internal Tools", archived_csv)
+            self.assertNotIn("Technical Program Manager", archived_csv)
+
+    def test_dashboard_start_and_stop_manage_a_reusable_local_service(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                ),
+            )
+            start_command = [
+                sys.executable,
+                str(SCRIPTS / "retriever.py"),
+                "--state-dir",
+                tmp,
+                "dashboard",
+                "start",
+                "--ranked",
+            ]
+            started = subprocess.run(start_command, capture_output=True, text=True)
+            stop_command = [
+                sys.executable,
+                str(SCRIPTS / "retriever.py"),
+                "--state-dir",
+                tmp,
+                "dashboard",
+                "stop",
+            ]
+            try:
+                self.assertEqual(0, started.returncode, started.stderr)
+                payload = json.loads(started.stdout)
+                self.assertTrue(payload["started"])
+                with request.urlopen(payload["dashboard_url"], timeout=5) as response:
+                    self.assertEqual(200, response.status)
+
+                reused = subprocess.run(start_command, check=True, capture_output=True, text=True)
+                reused_payload = json.loads(reused.stdout)
+                self.assertFalse(reused_payload["started"])
+                self.assertEqual(payload["dashboard_url"], reused_payload["dashboard_url"])
+
+                stopped = subprocess.run(stop_command, check=True, capture_output=True, text=True)
+                self.assertTrue(json.loads(stopped.stdout)["stopped"])
+            finally:
+                subprocess.run(stop_command, capture_output=True, text=True)
 
     def test_cli_html_report_writes_dashboard_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

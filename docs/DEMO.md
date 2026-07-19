@@ -12,9 +12,10 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 4. Run a retrieval pass against company career pages with Chrome.
 5. Show new matching jobs or a deterministic fixture if live results are not stable.
 6. Show prompt-injection warning behavior with the scanner.
-7. Export Markdown, CSV, and HTML dashboard reports.
-8. Start the loopback-only interactive dashboard, archive one job with its confirmation-gated button, and show that later reports hide it.
-9. Show the fresh-start path: preview `reset jobs`, confirm it, then show that profile, companies, and targets remain while job findings are cleared.
+7. Ask to see found jobs and show that Retriever automatically starts or reuses the loopback-only interactive dashboard.
+8. Point out its total-job, shown-job, and archived-job counts; download the archived-job CSV.
+9. Archive one job with its confirmation-gated button, show that later reports hide it, then stop the local dashboard.
+10. Show the fresh-start path: preview `reset jobs`, confirm it, then show that profile, companies, and targets remain while job findings are cleared.
 
 ## Deterministic Fallback
 

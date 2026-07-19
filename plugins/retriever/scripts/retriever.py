@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import secrets
+import subprocess
 import sys
 from pathlib import Path
 
@@ -322,13 +324,53 @@ def cmd_dashboard_serve(args: argparse.Namespace) -> int:
             )
         )
         return 2
-    server = dashboard.create_dashboard_server(state_dir, port=args.port, ranked=args.ranked)
+    managed = bool(args.service_id)
+    if managed != bool(args.control_token) or managed != bool(args.service_state):
+        print(
+            db.dump_json(
+                {
+                    "invalid_dashboard_service": True,
+                    "message": "Managed dashboard serving requires matching internal service metadata.",
+                }
+            )
+        )
+        return 2
+    if args.service_state:
+        expected_state_path = dashboard.service_state_path(state_dir).resolve()
+        supplied_state_path = Path(args.service_state).expanduser().resolve()
+        if supplied_state_path != expected_state_path:
+            print(
+                db.dump_json(
+                    {
+                        "invalid_dashboard_service": True,
+                        "message": "Managed dashboard metadata must remain inside the Retriever state directory.",
+                    }
+                )
+            )
+            return 2
+
+    server = dashboard.create_dashboard_server(
+        state_dir,
+        port=args.port,
+        ranked=args.ranked,
+        service_id=args.service_id,
+        control_token=args.control_token,
+    )
     host, port = server.server_address[:2]
+    if managed:
+        dashboard.write_service_state(
+            state_dir,
+            service_id=args.service_id,
+            control_token=args.control_token,
+            port=port,
+            ranked=args.ranked,
+        )
     print(
         db.dump_json(
             {
                 "dashboard_url": f"http://{host}:{port}/",
-                "message": "Interactive dashboard is local-only. Press Ctrl-C to stop it.",
+                "managed": managed,
+                "message": "Interactive dashboard is local-only. Press Ctrl-C to stop it." if not managed else "Interactive dashboard is local-only and managed by Retriever.",
             }
         ),
         flush=True,
@@ -339,6 +381,129 @@ def cmd_dashboard_serve(args: argparse.Namespace) -> int:
         return 0
     finally:
         server.server_close()
+        if managed:
+            dashboard.clear_service_state(state_dir, args.service_id)
+    return 0
+
+
+def cmd_dashboard_start(args: argparse.Namespace) -> int:
+    state_dir = raw_state_dir_from_args(args)
+    setup = db.setup_status(state_dir)
+    if setup["database_integrity"] != "ok":
+        print(
+            db.dump_json(
+                {
+                    "requires_valid_database": True,
+                    "message": "Retriever needs a valid local database before it can start the interactive dashboard. No local state was created.",
+                    "setup": setup,
+                }
+            )
+        )
+        return 2
+
+    existing = dashboard.active_service(state_dir)
+    if existing is not None:
+        print(
+            db.dump_json(
+                {
+                    "started": False,
+                    "dashboard_url": f"http://127.0.0.1:{existing['port']}/",
+                    "ranked": existing["ranked"],
+                    "message": "Retriever is reusing the active local dashboard.",
+                }
+            )
+        )
+        return 0
+
+    service_id = secrets.token_urlsafe(18)
+    control_token = secrets.token_urlsafe(32)
+    service_state = dashboard.service_state_path(state_dir)
+    service_log = state_dir / "dashboard-service.log"
+    command = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "--state-dir",
+        str(state_dir),
+        "dashboard",
+        "serve",
+        "--port",
+        str(args.port),
+        "--service-state",
+        str(service_state),
+        "--service-id",
+        service_id,
+        "--control-token",
+        control_token,
+    ]
+    if args.ranked:
+        command.append("--ranked")
+    with service_log.open("w", encoding="utf-8") as log_file:
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    active = dashboard.wait_for_active_service(state_dir, service_id)
+    if active is None:
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+        print(
+            db.dump_json(
+                {
+                    "started": False,
+                    "dashboard_unavailable": True,
+                    "message": "Retriever could not start the local dashboard service.",
+                }
+            )
+        )
+        return 1
+
+    print(
+        db.dump_json(
+            {
+                "started": True,
+                "dashboard_url": f"http://127.0.0.1:{active['port']}/",
+                "ranked": active["ranked"],
+                "message": "Retriever started the local interactive dashboard.",
+            }
+        )
+    )
+    return 0
+
+
+def cmd_dashboard_stop(args: argparse.Namespace) -> int:
+    state_dir = raw_state_dir_from_args(args)
+    active = dashboard.active_service(state_dir)
+    if active is None:
+        print(db.dump_json({"stopped": False, "message": "No managed Retriever dashboard is running."}))
+        return 0
+    if not dashboard.request_stop(active) or not dashboard.wait_for_stop(state_dir):
+        print(db.dump_json({"stopped": False, "message": "Retriever could not stop the managed local dashboard."}))
+        return 1
+    print(db.dump_json({"stopped": True, "message": "Retriever stopped the managed local dashboard."}))
+    return 0
+
+
+def cmd_dashboard_status(args: argparse.Namespace) -> int:
+    active = dashboard.active_service(raw_state_dir_from_args(args))
+    if active is None:
+        print(db.dump_json({"running": False}))
+        return 0
+    print(
+        db.dump_json(
+            {
+                "running": True,
+                "dashboard_url": f"http://127.0.0.1:{active['port']}/",
+                "ranked": active["ranked"],
+            }
+        )
+    )
     return 0
 
 
@@ -466,12 +631,23 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--limit", type=int, default=0, help="Limit displayed rows. Default 0 shows all rows.")
     report.set_defaults(func=cmd_report)
 
-    dashboard_parser = sub.add_parser("dashboard", help="Serve an interactive local job dashboard.")
+    dashboard_parser = sub.add_parser("dashboard", help="Manage the interactive local job dashboard.")
     dashboard_sub = dashboard_parser.add_subparsers(dest="dashboard_command", required=True)
     dashboard_serve = dashboard_sub.add_parser("serve", help="Start a loopback-only dashboard with archive controls.")
     dashboard_serve.add_argument("--port", type=int, default=0, help="Local port; default 0 chooses an available port.")
     dashboard_serve.add_argument("--ranked", action="store_true", help="Rank visible jobs before rendering.")
+    dashboard_serve.add_argument("--service-state", default="", help=argparse.SUPPRESS)
+    dashboard_serve.add_argument("--service-id", default="", help=argparse.SUPPRESS)
+    dashboard_serve.add_argument("--control-token", default="", help=argparse.SUPPRESS)
     dashboard_serve.set_defaults(func=cmd_dashboard_serve)
+    dashboard_start = dashboard_sub.add_parser("start", help="Start or reuse the managed loopback dashboard.")
+    dashboard_start.add_argument("--port", type=int, default=0, help="Local port; default 0 chooses an available port.")
+    dashboard_start.add_argument("--ranked", action="store_true", help="Rank visible jobs before rendering.")
+    dashboard_start.set_defaults(func=cmd_dashboard_start)
+    dashboard_stop = dashboard_sub.add_parser("stop", help="Stop the managed loopback dashboard.")
+    dashboard_stop.set_defaults(func=cmd_dashboard_stop)
+    dashboard_status = dashboard_sub.add_parser("status", help="Show whether the managed local dashboard is running.")
+    dashboard_status.set_defaults(func=cmd_dashboard_status)
 
     scan = sub.add_parser("scan-injection", help="Scan text for prompt-injection warnings.")
     scan.add_argument("--text", default="")

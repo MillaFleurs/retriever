@@ -59,7 +59,7 @@ A full profile or database wipe is intentionally not inferred from "start fresh 
 
 The default report returns the full visible database. Ranked reports can be limited for readability, but they must disclose how many visible jobs are not shown inline and offer the full report or CSV export.
 
-Report formats are Markdown for chat-readable summaries, CSV for spreadsheet import, and static HTML for a local dashboard that can be opened without a server. A separate loopback-only interactive dashboard is available when the user needs to archive a visible job: it binds only to `127.0.0.1`, requires a per-process confirmation token, and writes only the selected job's local archive flag after the user confirms.
+Report formats are Markdown for chat-readable summaries, CSV for spreadsheet import, and static HTML for a local dashboard that can be opened without a server. Whenever a user asks for found jobs, the report skill starts or reuses a managed loopback-only interactive dashboard and presents its URL. It binds only to `127.0.0.1`, displays total job records, shown jobs, and directly archived jobs, offers an archived-job CSV download, requires a per-process confirmation token for archiving, and writes only the selected job's local archive flag after the user confirms. `dashboard stop` sends an authenticated loopback shutdown request and removes its local service metadata.
 
 ## Scheduling
 

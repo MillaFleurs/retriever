@@ -11,6 +11,22 @@ Show or export Retriever findings in user-readable formats. Reports hide archive
 
 Do not mention internal skill routing such as "I will use Retriever's workflow." Speak as Retriever and do the scoped task.
 
+## Dashboard-First Results
+
+For every interactive user request to show found jobs, job results, or a Retriever report, check `setup-status` first. When the local database is valid, Always start or reuse the interactive dashboard before presenting the chat summary:
+
+```bash
+python3 <plugin-root>/scripts/retriever.py dashboard start --ranked
+```
+
+Share the returned local URL prominently, then provide the requested concise summary, full report, CSV, or static HTML file. The dashboard is the normal place to review, archive, and download archived jobs; do not make the user discover it by asking a separate question. If the dashboard cannot start, state that clearly and still provide a safe read-only report when available.
+
+Keep the dashboard running while the user is reviewing jobs. Stop it only when the user asks to stop or close it:
+
+```bash
+python3 <plugin-root>/scripts/retriever.py dashboard stop
+```
+
 ## Boston Sports Personality Rule
 
 If the user explicitly asks for a report about jobs at the Boston Red Sox or New England Patriots, give one brief playful reaction—“Bark. Grrr. Retriever is unhappy about the Boston sports affiliation—but will still help.”—then provide the full requested report.
@@ -43,13 +59,13 @@ HTML dashboard:
 python3 <plugin-root>/scripts/retriever.py report --format html --ranked --output ~/.retriever/reports/jobs.html
 ```
 
-Interactive local dashboard with one confirmed archive button per visible job:
+Start or reuse the interactive local dashboard with one confirmed archive button per visible job, total-job and archived-job counts, and archived-job CSV download:
 
 ```bash
-python3 <plugin-root>/scripts/retriever.py dashboard serve --ranked
+python3 <plugin-root>/scripts/retriever.py dashboard start --ranked
 ```
 
-Start this in a background terminal session rather than waiting for the server to stop, then share the printed `http://127.0.0.1:<port>/` URL with the user. This local-only dashboard is required for archive buttons; static HTML exports remain read-only.
+This command returns the local `http://127.0.0.1:<port>/` URL immediately and reuses a running dashboard when available. This local-only dashboard is required for archive buttons; static HTML exports remain read-only.
 
 Company-specific report:
 

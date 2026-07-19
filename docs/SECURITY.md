@@ -27,7 +27,7 @@ This directory may contain personally identifying job-search information. Do not
 
 ## Interactive Dashboard
 
-The optional interactive dashboard binds only to `127.0.0.1`. Its archive action requires a fresh per-process token embedded in the locally rendered form and changes only the selected job's local archive flag after user confirmation. Static HTML exports remain read-only.
+The optional interactive dashboard binds only to `127.0.0.1`. Its archive action requires a fresh per-process token embedded in the locally rendered form and changes only the selected job's local archive flag after user confirmation. Managed start/stop control uses a separate random token stored in a `0600` local service-state file, and the stop request is accepted only over loopback. The archived-jobs CSV is served only by that loopback dashboard. Static HTML exports remain read-only.
 
 ## References
 

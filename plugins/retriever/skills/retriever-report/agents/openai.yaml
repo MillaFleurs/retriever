@@ -1,4 +1,4 @@
 interface:
   display_name: "Retriever Report"
-  short_description: "Export readable Retriever job reports."
-  default_prompt: "Use $retriever-report to show ranked matches, offer the full database, or export my Retriever job findings."
+  short_description: "Open and export local job results."
+  default_prompt: "Use $retriever-report to open my dashboard and show my job findings."
