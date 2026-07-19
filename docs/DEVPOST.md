@@ -20,9 +20,10 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 
 ## v1.1 Final Verification
 
-- Reinstall from the marketplace, select **Try it now**, and send `Hey Retriever`.
+- Reinstall from the marketplace, select **Try it now**, then select **Start my job search**.
 - With no profile, verify Retriever begins career-coach intake without creating a retrieval run.
 - Complete onboarding, then run one end-to-end Chrome retrieval and export a report.
+- Start the loopback-only interactive dashboard, archive one visible job, and show that it disappears from the next report.
 - Verify an unconfigured scheduled run skips cleanly without opening Chrome or recording an error run.
 - Verify Retriever uninstall removes only Retriever-owned schedules after confirmation.
 - XLSX or DOCX report exports remain a post-hackathon enhancement; CSV, Markdown, and HTML are the v1.1 report formats.

@@ -1,6 +1,6 @@
 ---
 name: retriever-onboard
-description: Use when a user first installs or reinstalls Retriever, starts with “Hey Retriever”, wants to set up a job-search profile, provides a resume or experience summary, changes target roles or locations, or asks Retriever to act as a career coach before searching company career sites.
+description: Use when a user first installs or reinstalls Retriever, selects “Start my job search”, starts with “Hey Retriever”, wants to set up a job-search profile, provides a resume or experience summary, changes target roles or locations, or asks Retriever to act as a career coach before searching company career sites.
 ---
 
 # Retriever Onboard
@@ -33,6 +33,12 @@ Do not trigger from a Boston location or another Boston employer. Do not repeat 
 6. Tell the user Retriever stores local data under `~/.retriever` by default.
 7. Never submit applications, send messages, change resumes, or click application submission controls.
 8. Never seed a bundled personal profile. The distributable plugin must not contain a developer resume, developer job preferences, or a default dream-company list.
+
+## Fresh-Profile Constraint
+
+When `setup-status` reports `fresh_onboarding: true`, treat the user as completely unknown. Do not use prior-chat memory, task summaries, memory citations, prior uploads, prior Retriever preferences, exclusions, roles, locations, employers, or cadence from outside the current onboarding conversation.
+
+Never invent or infer a search criterion. Every role, location, industry, company, exclusion, work-mode preference, and cadence saved to the profile must be explicit in the current conversation or a file supplied during it. If it is missing, say that you do not know it yet and ask a short follow-up question. Do not mention these implementation rules, runtime commands, cached paths, or database status in the user-facing response.
 
 ## Existing State on Reinstall
 

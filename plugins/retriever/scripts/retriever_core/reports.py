@@ -168,7 +168,13 @@ def jobs_to_html(
     heading: str = "Retriever Job Dashboard",
     total_count: int | None = None,
     ranked: bool = False,
+    interactive_archive: bool = False,
+    archive_token: str = "",
+    archive_notice: str = "",
 ) -> str:
+    if interactive_archive and not archive_token:
+        raise ValueError("interactive dashboards require an archive token")
+
     generated = now_utc()
     shown_count = len(rows)
     visible_count = total_count if total_count is not None else shown_count
@@ -183,6 +189,14 @@ def jobs_to_html(
         link_html = f'<a href="{_html(link)}">{_html(link)}</a>' if link else "No stable URL"
         warning_badge = '<span class="badge warning">Warning</span>' if row["prompt_injection_warning"] else '<span class="badge ok">Clear</span>'
         fit = _fit_text(row)
+        archive_control = ""
+        if interactive_archive:
+            archive_control = """
+            <form class="archive-form" method="post" action="/jobs/{id}/archive" onsubmit="return confirm('Archive this job from local Retriever reports?');">
+              <input type="hidden" name="token" value="{token}">
+              <button class="archive-button" type="submit">Archive job</button>
+            </form>
+            """.format(id=_html(row["id"]), token=_html(archive_token))
         table_rows.append(
             """
             <tr>
@@ -194,6 +208,7 @@ def jobs_to_html(
               <td>{warning}</td>
               <td>{first_seen}</td>
               <td>{link}</td>
+              {archive_cell}
             </tr>
             """.format(
                 id=_html(row["id"]),
@@ -204,6 +219,7 @@ def jobs_to_html(
                 warning=warning_badge,
                 first_seen=_html(row["first_seen_at"]),
                 link=link_html,
+                archive_cell=f"<td>{archive_control}</td>" if interactive_archive else "",
             )
         )
         row_cards.append(
@@ -225,6 +241,7 @@ def jobs_to_html(
                 <div><dt>Last seen</dt><dd>{last_seen}</dd></div>
               </dl>
               <p class="link-line">{link}</p>
+              {archive_control}
             </article>
             """.format(
                 company=_html(row["company_name"]),
@@ -237,6 +254,7 @@ def jobs_to_html(
                 first_seen=_html(row["first_seen_at"]),
                 last_seen=_html(row["last_seen_at"]),
                 link=link_html,
+                archive_control=archive_control,
             )
         )
 
@@ -267,6 +285,7 @@ def jobs_to_html(
                   <th>Status</th>
                   <th>First Seen</th>
                   <th>Link</th>
+                  {archive_heading}
                 </tr>
               </thead>
               <tbody>
@@ -278,7 +297,12 @@ def jobs_to_html(
         <section class="job-grid" aria-label="Job details">
           {cards}
         </section>
-        """.format(summary=_html(summary), rows="\n".join(table_rows), cards="\n".join(row_cards))
+        """.format(
+            summary=_html(summary),
+            rows="\n".join(table_rows),
+            cards="\n".join(row_cards),
+            archive_heading="<th>Action</th>" if interactive_archive else "",
+        )
     else:
         referral_section = ""
         jobs_section = """
@@ -308,6 +332,18 @@ def jobs_to_html(
           <ul>{warning_items}</ul>
         </section>
         """.format(warning_items=warning_items)
+
+    notice_section = ""
+    if archive_notice:
+        notice_section = '<p class="notice" role="status">{notice}</p>'.format(notice=_html(archive_notice))
+
+    dashboard_description = (
+        "This loopback-only dashboard can archive jobs from local Retriever reports after confirmation. "
+        "It does not submit applications or contact employers."
+        if interactive_archive
+        else "This dashboard is a static local report; use the interactive local dashboard to archive a job. "
+        "It does not submit applications or contact employers."
+    )
 
     return """<!doctype html>
 <html lang="en">
@@ -460,6 +496,26 @@ def jobs_to_html(
     .warnings ul {{ margin: 0; padding-left: 20px; }}
     .warnings li + li {{ margin-top: 10px; }}
     .referral p {{ color: var(--muted); max-width: 860px; }}
+    .archive-form {{ margin: 14px 0 0; }}
+    .archive-button {{
+      border: 1px solid var(--accent-dark);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #ffffff;
+      background: var(--accent-dark);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }}
+    .archive-button:hover {{ background: var(--accent); }}
+    .notice {{
+      margin: 18px 0 0;
+      padding: 12px 14px;
+      color: var(--ok);
+      background: #f0fdf4;
+      border: 1px solid currentColor;
+      border-radius: 8px;
+    }}
     @media (max-width: 680px) {{
       .shell {{ width: min(100vw - 20px, 1180px); padding-top: 10px; }}
       header, .panel, .empty-state, .job-card {{ padding: 14px; }}
@@ -474,7 +530,7 @@ def jobs_to_html(
     <header>
       <div>
         <h1>{heading}</h1>
-        <p class="subtitle">Company-site job intelligence from Retriever. This dashboard is a static local report; it does not submit applications or contact employers.</p>
+        <p class="subtitle">Company-site job intelligence from Retriever. {dashboard_description}</p>
       </div>
       <section class="metrics" aria-label="Dashboard summary">
         <div class="metric"><span>Generated</span><strong>{generated}</strong></div>
@@ -483,6 +539,7 @@ def jobs_to_html(
         <div class="metric"><span>Warnings</span><strong>{warning_count}</strong></div>
       </section>
       <p class="subtitle">{rank_note}</p>
+      {notice_section}
     </header>
     {referral_section}
     {jobs_section}
@@ -497,6 +554,8 @@ def jobs_to_html(
         shown_count=_html(shown_count),
         warning_count=_html(warning_count),
         rank_note=_html(rank_note),
+        dashboard_description=_html(dashboard_description),
+        notice_section=notice_section,
         referral_section=referral_section,
         jobs_section=jobs_section,
         warnings_section=warnings_section,

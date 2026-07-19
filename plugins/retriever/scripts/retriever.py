@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-from retriever_core import db, profile, reports
+from retriever_core import dashboard, db, profile, reports
 from retriever_core.db import JobInput
 from retriever_core.injection import scan_text
 
@@ -308,6 +308,40 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dashboard_serve(args: argparse.Namespace) -> int:
+    state_dir = raw_state_dir_from_args(args)
+    setup = db.setup_status(state_dir)
+    if setup["database_integrity"] != "ok":
+        print(
+            db.dump_json(
+                {
+                    "requires_valid_database": True,
+                    "message": "Retriever needs a valid local database before it can start the interactive dashboard. No local state was created.",
+                    "setup": setup,
+                }
+            )
+        )
+        return 2
+    server = dashboard.create_dashboard_server(state_dir, port=args.port, ranked=args.ranked)
+    host, port = server.server_address[:2]
+    print(
+        db.dump_json(
+            {
+                "dashboard_url": f"http://{host}:{port}/",
+                "message": "Interactive dashboard is local-only. Press Ctrl-C to stop it.",
+            }
+        ),
+        flush=True,
+    )
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        server.server_close()
+    return 0
+
+
 def cmd_scan_injection(args: argparse.Namespace) -> int:
     text = args.text or _read_optional_file(args.file)
     warnings = scan_text(text)
@@ -431,6 +465,13 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--ranked", action="store_true", help="Rank jobs by active role, industry, and location targets.")
     report.add_argument("--limit", type=int, default=0, help="Limit displayed rows. Default 0 shows all rows.")
     report.set_defaults(func=cmd_report)
+
+    dashboard_parser = sub.add_parser("dashboard", help="Serve an interactive local job dashboard.")
+    dashboard_sub = dashboard_parser.add_subparsers(dest="dashboard_command", required=True)
+    dashboard_serve = dashboard_sub.add_parser("serve", help="Start a loopback-only dashboard with archive controls.")
+    dashboard_serve.add_argument("--port", type=int, default=0, help="Local port; default 0 chooses an available port.")
+    dashboard_serve.add_argument("--ranked", action="store_true", help="Rank visible jobs before rendering.")
+    dashboard_serve.set_defaults(func=cmd_dashboard_serve)
 
     scan = sub.add_parser("scan-injection", help="Scan text for prompt-injection warnings.")
     scan.add_argument("--text", default="")

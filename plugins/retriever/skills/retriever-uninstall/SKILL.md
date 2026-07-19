@@ -27,4 +27,4 @@ Default to keeping local data. Do not use archive flags as a substitute for a re
 
 ## Final Step
 
-Tell the user they can now uninstall Retriever in the Codex Plugins UI. Explain that a later install followed by “Hey Retriever” will inspect any retained state and either continue setup or begin a fresh onboarding conversation.
+Tell the user they can now uninstall Retriever in the Codex Plugins UI. Explain that a later install followed by **Start my job search** will inspect any retained state and either continue setup or begin a fresh onboarding conversation.

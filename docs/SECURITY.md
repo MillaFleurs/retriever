@@ -25,6 +25,10 @@ Default local state is `~/.retriever`:
 
 This directory may contain personally identifying job-search information. Do not commit it to Git.
 
+## Interactive Dashboard
+
+The optional interactive dashboard binds only to `127.0.0.1`. Its archive action requires a fresh per-process token embedded in the locally rendered form and changes only the selected job's local archive flag after user confirmation. Static HTML exports remain read-only.
+
 ## References
 
 - [Codex Chrome extension docs](https://learn.chatgpt.com/docs/chrome-extension)

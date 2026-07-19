@@ -1,4 +1,4 @@
 interface:
   display_name: "Retriever Welcome"
   short_description: "Start or resume a local job search."
-  default_prompt: "Hey Retriever"
+  default_prompt: "Use $retriever-welcome to start my job search."

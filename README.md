@@ -15,7 +15,7 @@ Retriever is an intelligence and reconnaissance tool only.
 - It reads and reviews company career sites.
 - It records companies, jobs, targets, retrieval runs, and observations in SQLite.
 - It warns about career-page prompt-injection patterns.
-- It exports Markdown, CSV, and static HTML dashboard reports.
+- It exports Markdown, CSV, static HTML reports, and a loopback-only interactive dashboard for local job archiving.
 - It does not submit applications, send employer messages, rewrite resumes for listings, or click final application controls.
 - If a user explicitly targets the Boston Red Sox or New England Patriots as an employer, Retriever gives one playful “Bark. Grrr.” while still providing the same complete help and results.
 
@@ -78,11 +78,11 @@ Retriever is intended to run through the Codex app after installation. A normal 
 
 1. Open Codex in the ChatGPT desktop app.
 2. Open **Plugins**, install **Retriever**, and select **Try it now**.
-3. Send the provided `Hey Retriever` prompt. Retriever checks local setup without creating data; when no saved profile is present, it starts the career-coach intake immediately.
+3. Select **Start my job search**. Retriever checks local setup without creating data; when no saved profile is present, it starts a concise career-coach intake immediately.
 4. Ask Retriever for the workflow you want, for example:
 
 ```text
-Hey Retriever
+Start my job search
 Check my target companies for new jobs.
 Show my full Retriever job report.
 Export my Retriever jobs as an HTML dashboard.
@@ -142,6 +142,14 @@ python3 plugins/retriever/scripts/retriever.py report --format csv --output ~/.r
 python3 plugins/retriever/scripts/retriever.py report --format html --ranked --output ~/.retriever/reports/jobs.html
 ```
 
+Start a local-only interactive dashboard with one confirmation-gated archive button per visible job:
+
+```bash
+python3 plugins/retriever/scripts/retriever.py dashboard serve --ranked
+```
+
+Open the printed `http://127.0.0.1:<port>/` URL while that command is running. Static HTML exports remain read-only.
+
 Archive items:
 
 ```bash
@@ -171,7 +179,7 @@ References: [Codex plugins](https://learn.chatgpt.com/docs/plugins), [Build plug
 ## Skills
 
 - `$retriever-onboard`: create or refresh `USER.md`, ask career-coach intake questions, seed companies.
-- `$retriever-welcome`: handle `Hey Retriever`, safely inspect local state, and start or resume onboarding.
+- `$retriever-welcome`: handle the **Start my job search** prompt, safely inspect local state, and start or resume onboarding.
 - `$retriever-retrieve`: use Chrome to inspect company career sites and record matching jobs.
 - `$retriever-manage`: update companies, targets, cadence, archive state, and explicit reset requests.
 - `$retriever-report`: export Markdown, CSV, or HTML reports.

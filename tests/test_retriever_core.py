@@ -4,7 +4,9 @@ import json
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
+from urllib import error, request
 from pathlib import Path
 
 
@@ -12,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "plugins" / "retriever" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from retriever_core import db, profile  # noqa: E402
+from retriever_core import dashboard, db, profile  # noqa: E402
 from retriever_core.db import JobInput  # noqa: E402
 from retriever_core.injection import scan_text  # noqa: E402
 from retriever_core import reports  # noqa: E402
@@ -179,6 +181,15 @@ class RetrieverCoreTests(unittest.TestCase):
             self.assertTrue(status["fresh_onboarding"])
             self.assertFalse(status["ready_for_retrieval"])
 
+    def test_fresh_onboarding_uses_only_current_explicit_user_input(self) -> None:
+        welcome = (ROOT / "plugins" / "retriever" / "skills" / "retriever-welcome" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("do not use prior-chat memory", welcome.lower())
+        self.assertIn("never invent or infer a search criterion", welcome.lower())
+        self.assertIn("do not mention internal setup details", welcome.lower())
+
     def test_profile_requires_companies_and_cadence_before_it_can_be_saved(self) -> None:
         incomplete = self.demo_profile()
         incomplete.pop("companies")
@@ -230,6 +241,27 @@ class RetrieverCoreTests(unittest.TestCase):
             self.assertEqual(2, proc.returncode)
             payload = json.loads(proc.stdout)
             self.assertTrue(payload["requires_onboarding"])
+            self.assertFalse(state_dir.exists())
+
+    def test_dashboard_serve_rejects_missing_state_without_creating_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "missing-dashboard-state"
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "retriever.py"),
+                    "--state-dir",
+                    str(state_dir),
+                    "dashboard",
+                    "serve",
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(2, proc.returncode)
+            payload = json.loads(proc.stdout)
+            self.assertTrue(payload["requires_valid_database"])
             self.assertFalse(state_dir.exists())
 
     def test_distributable_runtime_has_no_personal_seed_profile(self) -> None:
@@ -306,6 +338,75 @@ class RetrieverCoreTests(unittest.TestCase):
             self.assertIn("Ranked by active role, industry, and location targets.", dashboard)
             self.assertIn("Referral Next Step", dashboard)
             self.assertIn("does not send messages, contact employers, or submit applications", dashboard)
+
+    def test_interactive_dashboard_includes_a_confirmed_archive_control_per_job(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            job, _ = db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                ),
+            )
+
+            dashboard = reports.jobs_to_html(
+                db.visible_jobs(conn),
+                interactive_archive=True,
+                archive_token="test-token",
+            )
+
+            self.assertIn(f'action="/jobs/{job["id"]}/archive"', dashboard)
+            self.assertIn('name="token" value="test-token"', dashboard)
+            self.assertIn("Archive job", dashboard)
+            self.assertIn("return confirm(", dashboard)
+
+    def test_loopback_dashboard_archives_only_after_a_tokened_post(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            job, _ = db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                ),
+            )
+            server = dashboard.create_dashboard_server(tmp)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            self.addCleanup(server.server_close)
+            self.addCleanup(thread.join, 2)
+            self.addCleanup(server.shutdown)
+            url = f"http://127.0.0.1:{server.server_address[1]}"
+
+            with request.urlopen(f"{url}/", timeout=5) as response:
+                page = response.read().decode("utf-8")
+            self.assertIn("Archive job", page)
+
+            invalid = request.Request(
+                f"{url}/jobs/{job['id']}/archive",
+                data=b"token=wrong-token",
+                method="POST",
+            )
+            with self.assertRaises(error.HTTPError) as caught:
+                request.urlopen(invalid, timeout=5)
+            self.assertEqual(403, caught.exception.code)
+            caught.exception.close()
+            self.assertEqual(0, conn.execute("SELECT archived FROM jobs WHERE id = ?", (job["id"],)).fetchone()[0])
+
+            valid = request.Request(
+                f"{url}/jobs/{job['id']}/archive",
+                data=f"token={server.retriever_archive_token}".encode("utf-8"),
+                method="POST",
+            )
+            with request.urlopen(valid, timeout=5) as response:
+                self.assertEqual(200, response.status)
+                self.assertIn("Archived job", response.read().decode("utf-8"))
+            self.assertEqual(1, conn.execute("SELECT archived FROM jobs WHERE id = ?", (job["id"],)).fetchone()[0])
 
     def test_cli_html_report_writes_dashboard_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -43,6 +43,14 @@ HTML dashboard:
 python3 <plugin-root>/scripts/retriever.py report --format html --ranked --output ~/.retriever/reports/jobs.html
 ```
 
+Interactive local dashboard with one confirmed archive button per visible job:
+
+```bash
+python3 <plugin-root>/scripts/retriever.py dashboard serve --ranked
+```
+
+Start this in a background terminal session rather than waiting for the server to stop, then share the printed `http://127.0.0.1:<port>/` URL with the user. This local-only dashboard is required for archive buttons; static HTML exports remain read-only.
+
 Company-specific report:
 
 ```bash
