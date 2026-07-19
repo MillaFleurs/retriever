@@ -65,7 +65,7 @@ Report formats are Markdown for chat-readable summaries, CSV for spreadsheet imp
 
 ## Scheduling
 
-Recurring retrieval should be configured through Codex Scheduled only after the user chooses cadence, `setup-status` reports `ready_for_retrieval: true`, and the user explicitly authorizes retrieval. The scheduled prompt invokes `$retriever-retrieve`, but must repeat the setup preflight before it opens Chrome or creates a run.
+Recurring retrieval should be configured through Codex Scheduled only after the user chooses cadence, `setup-status` reports `ready_for_retrieval: true`, and the user explicitly authorizes retrieval. At execution time, the scheduled prompt invokes the currently loaded `$retriever-retrieve` skill, which resolves its own installed runtime and repeats the setup preflight before it opens Chrome or creates a run. Scheduled prompts must never persist a versioned `~/.codex/plugins/cache/...` runtime path because plugin updates and reinstalls can replace cache directories.
 
 Before uninstalling Retriever, its explicit uninstall workflow identifies and removes only Retriever-owned schedules after user confirmation. Local `~/.retriever` data is preserved unless the user separately selects a reset or deletion.
 

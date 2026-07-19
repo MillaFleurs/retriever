@@ -79,9 +79,12 @@ Reference: [Build plugins: marketplace sources](https://learn.chatgpt.com/docs/b
 
 ## Scheduled Retrieval
 
-Retriever creates recurring checks through Codex **Scheduled** only after the user chooses a cadence and explicitly authorizes retrieval. Installation and onboarding never create a background job on their own. Scheduled checks must rerun Retriever's local preflight before opening Chrome; if the profile or database is incomplete, they skip the scan and direct the user back to onboarding.
+Retriever creates recurring checks through Codex **Scheduled** only after the user chooses a cadence and explicitly authorizes retrieval. Installation and onboarding never create a background job on their own. At execution time, the scheduled task invokes the currently loaded `$retriever-retrieve` skill, which resolves its own installed runtime and reruns Retriever's local preflight before opening Chrome. A scheduled task must never store or invoke a versioned `~/.codex/plugins/cache/...` path; plugin updates and reinstalls can replace those cache directories. If the profile or database is incomplete, Retriever skips the scan and directs the user back to onboarding.
 
 Use the Retriever conversation to request a schedule, or open the Scheduled create flow in the desktop app. Local job checks depend on Codex, Chrome, and the user's machine/session being available at run time.
+
+If a scheduled run names a missing versioned Retriever cache directory, that error alone does not mean the saved job-search profile is stale. Ask Retriever to repair the daily schedule; it should check the active profile through the current skill, update only the Retriever-owned task while preserving its schedule settings, and not trigger a scan during the repair.
+
 Reference: [OpenAI Scheduled tasks documentation](https://learn.chatgpt.com/docs/automations), [Retriever automation guide](AUTOMATION.md).
 
 ## Uninstall and Local Data

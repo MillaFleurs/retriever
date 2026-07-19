@@ -27,6 +27,6 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 - Approve the first search, then run one end-to-end Chrome retrieval and export a report.
 - Ask for found jobs, verify Retriever starts or reuses the loopback-only interactive dashboard, and show its total/shown/archived counts plus the archived-job CSV download.
 - Archive one visible job, show that it disappears from the next report, then stop the managed dashboard.
-- Verify an unconfigured scheduled run skips cleanly without opening Chrome or recording an error run.
+- Verify an unconfigured scheduled run skips cleanly without opening Chrome or recording an error run, and that a configured schedule resolves the currently installed Retriever runtime at execution time rather than retaining a versioned cache path.
 - Verify Retriever uninstall removes only Retriever-owned schedules after confirmation.
 - XLSX or DOCX report exports remain a post-hackathon enhancement; CSV, Markdown, and HTML are the v1.1 report formats.

@@ -203,6 +203,26 @@ class RetrieverCoreTests(unittest.TestCase):
         self.assertIn("do not start a retrieval run", onboard.lower())
         self.assertIn("onboarding completion is not consent", retrieve.lower())
 
+    def test_scheduled_retrieval_resolves_the_installed_runtime_at_execution_time(self) -> None:
+        retrieve = (ROOT / "plugins" / "retriever" / "skills" / "retriever-retrieve" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        automation = (ROOT / "docs" / "AUTOMATION.md").read_text(encoding="utf-8")
+
+        for content in (retrieve, automation):
+            self.assertIn("$retriever-retrieve", content)
+            self.assertIn("at execution time", content.lower())
+            self.assertIn("do not store", content.lower())
+
+        self.assertIn("do not call a healthy local profile stale", retrieve.lower())
+        self.assertIn("does not by itself mean the job-search profile is stale", automation.lower())
+
+        scheduled_template = retrieve.split("Use this scheduled-task prompt template:", 1)[1]
+        self.assertNotIn("python3 <plugin-root>", scheduled_template)
+        self.assertNotIn("python3 /users/", scheduled_template.lower())
+        self.assertNotIn("python3 <plugin-root>", automation)
+        self.assertNotIn("python3 /users/", automation.lower())
+
     def test_job_results_always_offer_the_interactive_dashboard(self) -> None:
         manifest = json.loads((ROOT / "plugins" / "retriever" / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
         report_skill = (ROOT / "plugins" / "retriever" / "skills" / "retriever-report" / "SKILL.md").read_text(

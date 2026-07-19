@@ -206,7 +206,7 @@ Use Codex's `plugin-creator` validation for `plugins/retriever` and `skill-creat
 
 ## Uninstall and Scheduled Searches
 
-Before uninstalling Retriever, tell it `Uninstall Retriever and delete its schedules`. Retriever will identify only its own Codex automations, show them for confirmation, and remove them before you use the Plugins UI. By default it preserves `~/.retriever`; choose a separate explicit reset or full-data deletion if you do not want to retain local data.
+Before uninstalling Retriever, tell it `Uninstall Retriever and delete its schedules`. Retriever will identify only its own Codex automations, show them for confirmation, and remove them before you use the Plugins UI. By default it preserves `~/.retriever`; choose a separate explicit reset or full-data deletion if you do not want to retain local data. A Retriever schedule uses the currently loaded `$retriever-retrieve` skill at execution time and must never persist a versioned `~/.codex/plugins/cache/...` runtime path, so a normal plugin update or reinstall does not invalidate a healthy profile.
 
 Plugin skills become available in a new chat after installation. Retriever therefore uses the first interactive **Try it now** or **Start my job search** conversation for onboarding and an explicit uninstall cleanup flow for scheduled automations; it does not claim a background install lifecycle event.
 

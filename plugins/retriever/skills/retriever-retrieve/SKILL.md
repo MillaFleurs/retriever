@@ -37,6 +37,8 @@ Before opening Chrome, reading `USER.md`, starting or finishing a run, writing a
 python3 <plugin-root>/scripts/retriever.py setup-status
 ```
 
+Resolve `<plugin-root>` from the loaded Retriever skill at execution time: it is the directory two levels above this skill directory. Do not reuse, infer, or persist a path from a previous plugin install or a versioned `~/.codex/plugins/cache/...` directory.
+
 Treat this non-mutating JSON check as authoritative.
 
 - If `ready_for_retrieval` is true, continue with retrieval.
@@ -112,7 +114,9 @@ When the user asks for recurring retrieval, use Codex automations if available a
 Use this scheduled-task prompt template:
 
 ```text
-First run `python3 <plugin-root>/scripts/retriever.py setup-status` and treat its JSON as authoritative. If `ready_for_retrieval` is false or `database_integrity` is not `ok`, skip the scan without opening Chrome, creating or finishing a run, writing jobs, or writing reports. State that interactive onboarding is required and direct the user to start a Codex chat and select “Start my job search”. Otherwise, use $retriever-retrieve to check active companies in ~/.retriever for jobs matching the active USER.md profile. Then use $retriever-report to report jobs first seen since the previous scheduled run or since yesterday, whichever is available. Show counts, top ranked matches if there are many results, offer the full database/CSV, ask whether the user wants help identifying potential referrers for promising roles, ask whether preferences need updates, and do not submit applications or contact employers.
+First invoke `$retriever-retrieve`. At execution time, let that loaded skill resolve its own installed plugin root and run Retriever’s authoritative `setup-status` configuration gate. Do not store, infer, or invoke a versioned `~/.codex/plugins/cache/...` runtime path in this scheduled task. If `ready_for_retrieval` is false or `database_integrity` is not `ok`, skip the scan without opening Chrome, creating or finishing a run, writing jobs, or writing reports. State that interactive onboarding is required and direct the user to start a Codex chat and select “Start my job search”. Otherwise, use `$retriever-retrieve` to check active companies in ~/.retriever for jobs matching the active USER.md profile. Then use `$retriever-report` to report jobs first seen since the previous scheduled run or since yesterday, whichever is available. Show counts, top ranked matches if there are many results, offer the full database/CSV, ask whether the user wants help identifying potential referrers for promising roles, ask whether preferences need updates, and do not submit applications or contact employers.
 ```
+
+If an existing Retriever schedule reports that a versioned cache runtime is missing, inspect its current `setup-status` through the installed skill. Do not call a healthy local profile stale merely because an obsolete cache path is missing. Update that existing Retriever-owned automation with the template above while preserving its cadence, timezone, project, model, and notification settings. Repairing the task must not trigger a scan.
 
 Do not create a schedule until the user has chosen cadence and scope. For "every morning at 9:00", use a daily wall-clock schedule for the user's local timezone. If an automation tool rejects one schedule representation, retry using that tool's supported daily wall-clock form while preserving the user's requested cadence.
