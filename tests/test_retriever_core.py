@@ -349,7 +349,6 @@ class RetrieverCoreTests(unittest.TestCase):
             legacy["cadence"] = "Daily at 8:00 AM America/New_York"
 
             # Simulate a profile saved by a pre-local-time Retriever release.
-            legacy["cadence"] = "Daily at 8:00 AM America/New_York"
             conn.execute(
                 "INSERT INTO targets (kind, value, created_at, updated_at, archived) VALUES ('role', 'Technical Program Manager', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0)"
             )
