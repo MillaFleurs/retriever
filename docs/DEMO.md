@@ -42,3 +42,10 @@ python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retrieve
 python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retriever-demo reset jobs --confirm-delete
 python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retriever-demo status
 ```
+
+For a first-run reset, preview then clear only the known demo artifacts. This local command does not manage scheduled tasks:
+
+```bash
+python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retriever-demo reset state
+python3 plugins/retriever/scripts/retriever.py --state-dir /private/tmp/retriever-demo reset state --confirm-delete
+```

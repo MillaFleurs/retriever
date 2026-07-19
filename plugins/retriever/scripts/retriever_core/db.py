@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -18,6 +19,15 @@ DEFAULT_STATE_DIR = Path.home() / ".retriever"
 TARGET_KINDS = {"role", "industry", "location", "company", "cadence"}
 REQUIRED_TARGET_KINDS = ("role", "location", "cadence")
 REQUIRED_TABLES = {"companies", "jobs", "targets", "retrieval_runs", "observations"}
+STATE_ARTIFACT_NAMES = (
+    "USER.md",
+    "retriever.sqlite3",
+    "retriever.sqlite3-shm",
+    "retriever.sqlite3-wal",
+    "reports",
+    "dashboard-service.json",
+    "dashboard-service.log",
+)
 
 
 def now_utc() -> str:
@@ -48,6 +58,88 @@ def state_paths(state_dir: str | Path | None = None) -> tuple[Path, Path, Path]:
     """Return state, database, and profile paths without mutating local state."""
     state = resolve_state_dir(state_dir)
     return state, state / "retriever.sqlite3", state / "USER.md"
+
+
+def state_reset_preview(state_dir: str | Path | None = None) -> dict[str, object]:
+    """List only known Retriever artifacts that a clean-state reset can remove.
+
+    A reset must not recursively delete an arbitrary caller-supplied directory.
+    Unknown entries are reported and preserved, while the absence of the known
+    profile, database, reports, and dashboard metadata still returns Retriever
+    to fresh-onboarding state.
+    """
+    state = resolve_state_dir(state_dir)
+    result: dict[str, object] = {
+        "state_dir": str(state),
+        "state_directory_exists": state.is_dir(),
+        "known_artifacts": [],
+        "preserved_unmanaged_entries": [],
+    }
+    if not state.exists():
+        return result
+    if state.is_symlink():
+        result["state_directory_error"] = "Retriever state path must not be a symbolic link"
+        return result
+    if not state.is_dir():
+        result["state_directory_error"] = "Retriever state path exists but is not a directory"
+        return result
+
+    default_state = DEFAULT_STATE_DIR.expanduser()
+    database = state / "retriever.sqlite3"
+    profile = state / "USER.md"
+    has_profile_marker = False
+    if profile.is_file():
+        try:
+            has_profile_marker = "# Retriever User Profile" in profile.read_text(encoding="utf-8")
+        except OSError:
+            pass
+    if state != default_state and not database.is_file() and not has_profile_marker:
+        result["state_directory_error"] = (
+            "custom state reset requires a Retriever database or a marked Retriever USER.md profile"
+        )
+        return result
+
+    for name in STATE_ARTIFACT_NAMES:
+        candidate = state / name
+        if candidate.is_symlink():
+            artifact_type = "symlink"
+        elif candidate.is_dir():
+            artifact_type = "directory"
+        elif candidate.exists():
+            artifact_type = "file"
+        else:
+            continue
+        result["known_artifacts"].append({"path": str(candidate), "type": artifact_type})
+
+    known_names = set(STATE_ARTIFACT_NAMES)
+    result["preserved_unmanaged_entries"] = sorted(
+        str(child) for child in state.iterdir() if child.name not in known_names
+    )
+    return result
+
+
+def reset_state_artifacts(state_dir: str | Path | None = None) -> dict[str, object]:
+    """Delete only the known Retriever state artifacts described by the preview."""
+    preview = state_reset_preview(state_dir)
+    if preview.get("state_directory_error"):
+        raise ValueError(str(preview["state_directory_error"]))
+
+    deleted: list[dict[str, str]] = []
+    for artifact in preview["known_artifacts"]:
+        path = Path(artifact["path"])
+        artifact_type = str(artifact["type"])
+        if artifact_type == "directory":
+            shutil.rmtree(path)
+        else:
+            path.unlink(missing_ok=True)
+        deleted.append({"path": str(path), "type": artifact_type})
+
+    return {
+        "state_dir": preview["state_dir"],
+        "deleted_artifacts": deleted,
+        "preserved_unmanaged_entries": preview["preserved_unmanaged_entries"],
+        "fresh_onboarding": True,
+    }
 
 
 def _readonly_connection(database: Path) -> sqlite3.Connection:

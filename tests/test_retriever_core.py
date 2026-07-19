@@ -843,6 +843,69 @@ class RetrieverCoreTests(unittest.TestCase):
             self.assertEqual(1, len(db.list_companies(conn)))
             self.assertEqual(1, len(db.list_targets(conn)))
 
+    def test_reset_state_cli_requires_confirmation_and_preserves_unmanaged_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            profile.write_profile(conn, self.demo_profile(), state_dir=tmp)
+            run = db.create_run(conn, notes="clean-state reset")
+            db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                ),
+                run_id=run["id"],
+            )
+            db.finish_run(conn, run["id"])
+            unmanaged = Path(tmp) / "keep-me.txt"
+            unmanaged.write_text("not a Retriever artifact", encoding="utf-8")
+            conn.close()
+
+            preview = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "retriever.py"),
+                    "--state-dir",
+                    tmp,
+                    "reset",
+                    "state",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(2, preview.returncode)
+            preview_payload = json.loads(preview.stdout)
+            self.assertTrue(preview_payload["requires_confirmation"])
+            self.assertTrue(preview_payload["scheduled_tasks_unchanged"])
+            self.assertIn(str(unmanaged), preview_payload["would_preserve_unmanaged_entries"])
+            self.assertTrue((Path(tmp) / "USER.md").exists())
+            self.assertTrue((Path(tmp) / "retriever.sqlite3").exists())
+
+            confirmed = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "retriever.py"),
+                    "--state-dir",
+                    tmp,
+                    "reset",
+                    "state",
+                    "--confirm-delete",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            result = json.loads(confirmed.stdout)
+            self.assertTrue(result["fresh_onboarding"])
+            self.assertTrue(result["scheduled_tasks_unchanged"])
+            self.assertTrue(unmanaged.exists())
+            self.assertFalse((Path(tmp) / "USER.md").exists())
+            self.assertFalse((Path(tmp) / "retriever.sqlite3").exists())
+            self.assertFalse((Path(tmp) / "reports").exists())
+            self.assertTrue(db.setup_status(tmp)["fresh_onboarding"])
+
     def test_target_archive_cli_requires_force_after_preview(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             conn = self.connection(tmp)

@@ -294,6 +294,68 @@ def cmd_reset_jobs(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_reset_state(args: argparse.Namespace) -> int:
+    """Return Retriever to fresh onboarding without deleting unrelated files."""
+    state_dir = raw_state_dir_from_args(args)
+    preview = db.state_reset_preview(state_dir)
+    if preview.get("state_directory_error"):
+        print(
+            db.dump_json(
+                {
+                    "requires_repair": True,
+                    "message": str(preview["state_directory_error"]),
+                    "state_dir": str(state_dir),
+                }
+            )
+        )
+        return 2
+    if not args.confirm_delete:
+        print(
+            db.dump_json(
+                {
+                    "requires_confirmation": True,
+                    "message": (
+                        "This will delete only the listed Retriever profile, database, reports, and dashboard artifacts. "
+                        "It preserves unrecognized files and does not delete Codex scheduled tasks. For a complete "
+                        "test reset, ask Retriever to reset its schedules and local state together. Rerun with "
+                        "--confirm-delete only after explicit confirmation."
+                    ),
+                    "would_delete_artifacts": preview["known_artifacts"],
+                    "would_preserve_unmanaged_entries": preview["preserved_unmanaged_entries"],
+                    "scheduled_tasks_unchanged": True,
+                }
+            )
+        )
+        return 2
+
+    active = dashboard.active_service(state_dir)
+    if active is not None:
+        if not dashboard.request_stop(active) or not dashboard.wait_for_stop(state_dir):
+            print(
+                db.dump_json(
+                    {
+                        "reset_blocked": True,
+                        "message": "Retriever could not stop the managed local dashboard, so no state was deleted.",
+                        "dashboard_url": f"http://127.0.0.1:{active['port']}/",
+                    }
+                )
+            )
+            return 2
+
+    try:
+        result = db.reset_state_artifacts(state_dir)
+    except ValueError as exc:
+        print(db.dump_json({"requires_repair": True, "message": str(exc), "state_dir": str(state_dir)}))
+        return 2
+    result["scheduled_tasks_unchanged"] = True
+    result["message"] = (
+        "Retriever local state is cleared for fresh onboarding. Any Retriever scheduled tasks were not changed by this "
+        "local command."
+    )
+    print(db.dump_json(result))
+    return 0
+
+
 def cmd_report(args: argparse.Namespace) -> int:
     state_dir = state_dir_from_args(args)
     conn = db.connect(state_dir)
@@ -640,6 +702,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Required to permanently delete job findings after the preview has been shown to the user.",
     )
     reset_jobs.set_defaults(func=cmd_reset_jobs)
+    reset_state = reset_sub.add_parser(
+        "state",
+        help="Delete known Retriever local-state artifacts for fresh onboarding while preserving unrecognized files.",
+    )
+    reset_state.add_argument(
+        "--confirm-delete",
+        action="store_true",
+        help="Required to delete the previewed Retriever local-state artifacts.",
+    )
+    reset_state.set_defaults(func=cmd_reset_state)
 
     report = sub.add_parser("report", help="Export visible jobs.")
     report.add_argument("--format", choices=["markdown", "csv", "html"], default="markdown")

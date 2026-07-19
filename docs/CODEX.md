@@ -98,6 +98,14 @@ Uninstall Retriever and delete its schedules.
 ```
 
 Retriever shows and removes only its own schedules after confirmation. Uninstalling the plugin does not delete `~/.retriever`; use Retriever's explicit reset or deletion workflow when you want to remove local profile data, job findings, or reports.
+
+For reinstall or first-run testing, ask:
+
+```text
+Reset Retriever for a clean test.
+```
+
+Retriever previews its own schedules and known local artifacts, asks for confirmation, removes only those schedules, and clears local state into fresh onboarding. It preserves unrecognized local files and unrelated Codex schedules. Do not manually delete `~/.retriever` while a Retriever schedule remains active.
 Reference: [OpenAI Plugins documentation](https://learn.chatgpt.com/docs/plugins), [Retriever security and data guide](SECURITY.md).
 
 ## Developer Runtime

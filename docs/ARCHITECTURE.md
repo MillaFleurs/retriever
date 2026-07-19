@@ -55,7 +55,9 @@ Archive is for hiding jobs, companies, or categories from reports while preservi
 
 `python3 plugins/retriever/scripts/retriever.py reset jobs` previews a job-findings reset. `python3 plugins/retriever/scripts/retriever.py reset jobs --confirm-delete` permanently deletes rows from `jobs`, `observations`, and `retrieval_runs` while preserving `USER.md`, `companies`, and `targets`.
 
-A full profile or database wipe is intentionally not inferred from "start fresh with jobs"; Retriever must ask for exact scope before deleting profile data, companies, targets, or the whole state directory.
+`python3 plugins/retriever/scripts/retriever.py reset state` previews a full fresh-onboarding cleanup. With `--confirm-delete`, it deletes only known Retriever artifacts—`USER.md`, SQLite database files, reports, and dashboard service metadata—while preserving unknown entries in the state directory. It stops the managed dashboard before deletion and never deletes Codex schedules itself. The interactive `retriever-uninstall` clean-test flow deletes confirmed Retriever-owned schedules first, then invokes this local cleanup, so manual `~/.retriever` deletion is unnecessary.
+
+A full profile or database wipe is intentionally not inferred from "start fresh with jobs"; Retriever must ask for exact scope before deleting profile data, companies, targets, or local artifacts.
 
 ## Reporting
 

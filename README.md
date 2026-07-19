@@ -200,6 +200,21 @@ python3 plugins/retriever/scripts/retriever.py reset jobs --confirm-delete
 
 The first command previews the rows that would be deleted. The second command permanently deletes jobs, observations, and retrieval-run history.
 
+For a full **clean test reset**—the equivalent of a fresh install without manually deleting folders—use Retriever in Codex:
+
+```text
+Reset Retriever for a clean test.
+```
+
+Retriever previews only its own scheduled tasks and known local artifacts, requests one explicit confirmation, then removes those schedules and clears the local profile, SQLite database, reports, and dashboard metadata. It preserves unrecognized files and never touches unrelated Codex tasks. The local-only preview/confirmation command is also available for development:
+
+```bash
+python3 plugins/retriever/scripts/retriever.py reset state
+python3 plugins/retriever/scripts/retriever.py reset state --confirm-delete
+```
+
+The command itself does **not** delete scheduled tasks; use the Retriever conversation for the complete test reset.
+
 ## Verification
 
 Run the full local test suite:
