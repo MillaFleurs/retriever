@@ -105,3 +105,9 @@ End onboarding by telling the user:
 - Any dream-company/location mismatches.
 
 Then run `setup-status` again. Do not say onboarding is complete or offer live retrieval until it returns `ready_for_retrieval: true`.
+
+When it returns `ready_for_retrieval: true`, use its `active_companies` value to give the user an informed choice before the first live search. Say, in natural career-coach language:
+
+> Your profile is ready. I have `<active_companies>` active companies to check. A first search may take about `<active_companies * 3>` minutes—roughly three minutes per company. Would you like me to run it now?
+
+Use the current `active_companies` value; never invent a company count or duration. Do not start a retrieval run, open Chrome, inspect a career site, start the dashboard, or create a schedule until the user explicitly agrees to the first search. Treat “yes,” “run it,” or an equivalent clear instruction as consent. If the user declines or defers, confirm that the profile is saved and wait for a later retrieval request.

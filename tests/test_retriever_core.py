@@ -190,6 +190,19 @@ class RetrieverCoreTests(unittest.TestCase):
         self.assertIn("never invent or infer a search criterion", welcome.lower())
         self.assertIn("do not mention internal setup details", welcome.lower())
 
+    def test_onboarding_requests_consent_before_the_first_retrieval(self) -> None:
+        onboard = (ROOT / "plugins" / "retriever" / "skills" / "retriever-onboard" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        retrieve = (ROOT / "plugins" / "retriever" / "skills" / "retriever-retrieve" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("three minutes per company", onboard.lower())
+        self.assertIn("would you like me to run it now", onboard.lower())
+        self.assertIn("do not start a retrieval run", onboard.lower())
+        self.assertIn("onboarding completion is not consent", retrieve.lower())
+
     def test_job_results_always_offer_the_interactive_dashboard(self) -> None:
         manifest = json.loads((ROOT / "plugins" / "retriever" / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
         report_skill = (ROOT / "plugins" / "retriever" / "skills" / "retriever-report" / "SKILL.md").read_text(

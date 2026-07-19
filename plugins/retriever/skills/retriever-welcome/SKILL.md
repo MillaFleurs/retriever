@@ -62,4 +62,4 @@ If the state exists but `ready_for_retrieval` is false:
 
 ## Completing Onboarding
 
-Use the Retriever Onboard skill once the user supplies their information. On success, verify the persisted result with `setup-status` and confirm that `ready_for_retrieval` is true before offering the first live retrieval.
+Use the Retriever Onboard skill once the user supplies their information. On success, verify the persisted result with `setup-status` and confirm that `ready_for_retrieval` is true before offering the first live retrieval. Then use `active_companies` from that status to estimate the first check at roughly three minutes per company and ask whether the user wants it run now. Do not treat onboarding completion as consent to search; wait for an explicit yes.

@@ -79,7 +79,8 @@ Retriever is intended to run through the Codex app after installation. A normal 
 1. Open Codex in the ChatGPT desktop app.
 2. Open **Plugins**, install **Retriever**, and select **Try it now**.
 3. Select **Start my job search**. Retriever checks local setup without creating data; when no saved profile is present, it starts a concise career-coach intake immediately.
-4. Ask Retriever for the workflow you want, for example:
+4. After it verifies the saved profile, Retriever asks whether to run the first company search. It calculates the estimate from the current active-company count at about three minutes per company, and it waits for an explicit yes before opening Chrome or searching a career site.
+5. Ask Retriever for the workflow you want, for example:
 
 ```text
 Start my job search
@@ -89,7 +90,7 @@ Open my Retriever job dashboard.
 Export my Retriever jobs as an HTML dashboard.
 ```
 
-Codex will invoke Retriever's bundled skills and use the local runtime under the hood. When a user asks about found jobs, Retriever starts or reuses its local interactive dashboard and shares the URL automatically. Installation itself cannot collect a resume or preferences in the background: that information is collected only in the first interactive chat. Live career-site retrieval still requires the Chrome plugin to be installed and enabled.
+Codex will invoke Retriever's bundled skills and use the local runtime under the hood. When a user asks about found jobs, Retriever starts or reuses its local interactive dashboard and shares the URL automatically. Installation itself cannot collect a resume or preferences in the background: that information is collected only in the first interactive chat. Live career-site retrieval still requires the Chrome plugin to be installed and enabled. Retriever uses the normal Chrome browser identity; it does not alter or append its name to the User-Agent string.
 
 References: [Codex plugins docs](https://learn.chatgpt.com/docs/plugins), [Codex skills and plugins docs](https://learn.chatgpt.com/docs/skills-and-plugins).
 

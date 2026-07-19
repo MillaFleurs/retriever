@@ -22,7 +22,8 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 
 - Reinstall from the marketplace, select **Try it now**, then select **Start my job search**.
 - With no profile, verify Retriever begins career-coach intake without creating a retrieval run.
-- Complete onboarding, then run one end-to-end Chrome retrieval and export a report.
+- Complete onboarding and verify Retriever calculates a first-search estimate from the active-company count at roughly three minutes per company, then waits for explicit permission before it opens Chrome.
+- Approve the first search, then run one end-to-end Chrome retrieval and export a report.
 - Ask for found jobs, verify Retriever starts or reuses the loopback-only interactive dashboard, and show its total/shown/archived counts plus the archived-job CSV download.
 - Archive one visible job, show that it disappears from the next report, then stop the managed dashboard.
 - Verify an unconfigured scheduled run skips cleanly without opening Chrome or recording an error run.
