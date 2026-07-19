@@ -46,39 +46,44 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules). The reposit
 ## Requirements
 
 - macOS for the first release.
-- Codex with the Chrome plugin installed and enabled for live career-site retrieval.
+- The ChatGPT desktop app with Codex available. Retriever plugins can run in Codex or Work mode; they are not available in Chat mode, the IDE extension, or mobile.
+- The separate Chrome plugin installed and enabled for live career-site retrieval. It is not needed for onboarding, local reports, or archive management.
 - Python 3 with the standard library.
 
-References: [Codex Chrome extension docs](https://learn.chatgpt.com/docs/chrome-extension), [Codex automations docs](https://learn.chatgpt.com/docs/automations).
+References: [OpenAI Plugins documentation](https://learn.chatgpt.com/docs/plugins), [Codex Chrome extension documentation](https://learn.chatgpt.com/docs/chrome-extension).
 
-## Install Locally
+## Install in Codex
 
-From this repository:
+Full Codex installation, update, scheduling, and uninstall guidance is in [Using Retriever with Codex](docs/CODEX.md).
 
-```bash
-codex plugin marketplace add /Users/daniel/code/20260717-retriever
-codex plugin add retriever@retriever
-```
+### GitHub Marketplace
 
-Then install `retriever` from the repo-local marketplace in Codex.
-
-The marketplace manifest is at `.agents/plugins/marketplace.json`; the plugin itself is at `plugins/retriever`.
-
-After publishing this repository on GitHub, users can add the marketplace from
-the GitHub repo instead of a local path:
+Install Retriever from its public GitHub marketplace:
 
 ```bash
 codex plugin marketplace add MillaFleurs/retriever
 codex plugin add retriever@retriever
 ```
 
+### Local Clone
+
+For development, run these commands from the repository root:
+
+```bash
+codex plugin marketplace add .
+codex plugin add retriever@retriever
+```
+
+The marketplace manifest is `.agents/plugins/marketplace.json`; its Retriever entry resolves to `plugins/retriever`. For a local source, restart the ChatGPT desktop app after changing plugin files.
+Reference: [Build plugins: marketplace setup](https://learn.chatgpt.com/docs/build-plugins#build-your-own-curated-plugin-list).
+
 ## Use in the Codex App
 
 Retriever is intended to run through the Codex app after installation. A normal user does not need to run the Python runtime commands directly.
 
-1. Open Codex in the ChatGPT desktop app.
-2. Open **Plugins**, install **Retriever**, and select **Try it now**.
-3. Select **Start my job search**. Retriever checks local setup without creating data; when no saved profile is present, it starts a concise career-coach intake immediately.
+1. Open a **new** Codex chat in the ChatGPT desktop app. Plugin skills become available in new chats after installation.
+2. If Codex shows **Try it now**, select it. Otherwise send **Start my job search**.
+3. Retriever checks local setup without creating data; when no saved profile is present, it starts a concise career-coach intake immediately.
 4. After it verifies the saved profile, Retriever asks whether to run the first company search. It calculates the estimate from the current active-company count at about three minutes per company, and it waits for an explicit yes before opening Chrome or searching a career site.
 5. Ask Retriever for the workflow you want, for example:
 
@@ -90,11 +95,22 @@ Open my Retriever job dashboard.
 Export my Retriever jobs as an HTML dashboard.
 ```
 
-Codex will invoke Retriever's bundled skills and use the local runtime under the hood. When a user asks about found jobs, Retriever starts or reuses its local interactive dashboard and shares the URL automatically. Installation itself cannot collect a resume or preferences in the background: that information is collected only in the first interactive chat. Live career-site retrieval still requires the Chrome plugin to be installed and enabled. Retriever uses the normal Chrome browser identity; it does not alter or append its name to the User-Agent string.
+Codex invokes Retriever's bundled skills and local runtime under the hood. When a user asks about found jobs, Retriever starts or reuses its local interactive dashboard and shares the URL automatically. Installation itself cannot collect a resume or preferences in the background: that information is collected only in the first interactive chat. Live career-site retrieval still requires the Chrome plugin to be installed and enabled. Retriever uses the normal Chrome browser identity; it does not alter or append its name to the User-Agent string.
 
-References: [Codex plugins docs](https://learn.chatgpt.com/docs/plugins), [Codex skills and plugins docs](https://learn.chatgpt.com/docs/skills-and-plugins).
+References: [OpenAI Plugins documentation](https://learn.chatgpt.com/docs/plugins), [Codex Chrome extension documentation](https://learn.chatgpt.com/docs/chrome-extension), [Using Retriever with Codex](docs/CODEX.md).
+
+## Documentation
+
+- [Using Retriever with Codex](docs/CODEX.md): GitHub and local marketplace installation, new-chat startup, Chrome, updates, Scheduled, and uninstall.
+- [Architecture](docs/ARCHITECTURE.md): components, data model, retrieval, archive, reset, reporting, and scheduling boundaries.
+- [Automation](docs/AUTOMATION.md): the guarded Codex Scheduled prompt and schedule lifecycle.
+- [Security and Safety](docs/SECURITY.md): external-site safety, prompt-injection handling, local data, and loopback dashboard controls.
+- [Demo Script](docs/DEMO.md): live and deterministic Devpost demo flow.
+- [Devpost Checklist](docs/DEVPOST.md): submission evidence and release verification.
 
 ## Runtime Commands for Development
+
+These commands are for developers, deterministic demos, and local verification. A normal Retriever user works through the Codex app and does not need to run them.
 
 Initialize local state:
 
@@ -176,13 +192,25 @@ python3 plugins/retriever/scripts/retriever.py reset jobs --confirm-delete
 
 The first command previews the rows that would be deleted. The second command permanently deletes jobs, observations, and retrieval-run history.
 
+## Verification
+
+Run the full local test suite:
+
+```bash
+python3 -B -m unittest discover -s tests -v
+```
+
+Plugin and skill validation are part of the release workflow:
+
+Use Codex's `plugin-creator` validation for `plugins/retriever` and `skill-creator` validation for any changed skill directory. Those helpers are provided by the local Codex installation rather than this repository's runtime.
+
 ## Uninstall and Scheduled Searches
 
 Before uninstalling Retriever, tell it `Uninstall Retriever and delete its schedules`. Retriever will identify only its own Codex automations, show them for confirmation, and remove them before you use the Plugins UI. By default it preserves `~/.retriever`; choose a separate explicit reset or full-data deletion if you do not want to retain local data.
 
-The Codex plugin documentation describes session hooks, but I found no documented plugin install, post-install, or uninstall lifecycle event. That is why Retriever uses the post-install **Try it now** conversation for onboarding and an explicit uninstall cleanup flow for scheduled automations.
+Plugin skills become available in a new chat after installation. Retriever therefore uses the first interactive **Try it now** or **Start my job search** conversation for onboarding and an explicit uninstall cleanup flow for scheduled automations; it does not claim a background install lifecycle event.
 
-References: [Codex plugins](https://learn.chatgpt.com/docs/plugins), [Build plugins](https://learn.chatgpt.com/docs/build-plugins), [Hooks](https://learn.chatgpt.com/docs/hooks).
+References: [OpenAI Plugins documentation](https://learn.chatgpt.com/docs/plugins), [Build plugins](https://learn.chatgpt.com/docs/build-plugins), [Using Retriever with Codex](docs/CODEX.md).
 
 ## Skills
 

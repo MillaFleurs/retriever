@@ -1,6 +1,6 @@
 {
   "name": "retriever",
-  "version": "1.1.0+codex.20260719015151",
+  "version": "1.1.0+codex.20260719020329",
   "description": "Company-site job intelligence for job seekers.",
   "author": {
     "name": "Dan Anderson",
@@ -12,7 +12,7 @@
   "interface": {
     "displayName": "Retriever",
     "shortDescription": "Company-site job intelligence for job seekers.",
-    "longDescription": "Retriever acts as a scoped career coach and reconnaissance tool for job seekers. It asks the user for resume and search preferences before creating a local USER.md profile, searches company career sites with Chrome, stores findings in SQLite under ~/.retriever, warns about prompt-injection content, ranks and exports job reports, and never submits applications.",
+    "longDescription": "Retriever acts as a scoped career coach and reconnaissance tool for job seekers. It asks for resume and search preferences before creating a local USER.md profile, asks permission before the first Chrome company-site search, stores findings in SQLite under ~/.retriever, warns about prompt-injection content, ranks and exports job reports, and never submits applications.",
     "developerName": "Dan Anderson",
     "category": "Productivity",
     "capabilities": [],

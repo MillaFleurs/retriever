@@ -6,7 +6,7 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 
 ## Flow
 
-1. Install Retriever from the repo-local marketplace, select **Try it now**, then select **Start my job search**.
+1. In a new Codex chat, install Retriever from the GitHub marketplace or the repo-local marketplace. Select **Try it now** if it is shown; otherwise send **Start my job search**. See [Using Retriever with Codex](CODEX.md).
 2. Show Retriever beginning the career-coach intake and creating a user-created `USER.md` only after the user supplies their information.
 3. Show the SQLite-backed company and target state.
 4. Show Retriever calculating the first-search estimate from the current company count at roughly three minutes per company, then asking for explicit permission to search.

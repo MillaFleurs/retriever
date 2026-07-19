@@ -12,6 +12,7 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 ## Required Evidence
 
 - README with install and test instructions.
+- [Using Retriever with Codex](CODEX.md) with GitHub marketplace, local marketplace, update, Chrome, Scheduled, and uninstall instructions.
 - Public CI that runs the local Retriever test suite on pushes and pull requests.
 - Demo video under the Devpost limit.
 - Repository URL when ready for public or shared judging.
@@ -20,7 +21,7 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 
 ## v1.1 Final Verification
 
-- Reinstall from the marketplace, select **Try it now**, then select **Start my job search**.
+- Reinstall from the marketplace, start a new Codex chat, then select **Try it now** or send **Start my job search**.
 - With no profile, verify Retriever begins career-coach intake without creating a retrieval run.
 - Complete onboarding and verify Retriever calculates a first-search estimate from the active-company count at roughly three minutes per company, then waits for explicit permission before it opens Chrome.
 - Approve the first search, then run one end-to-end Chrome retrieval and export a report.

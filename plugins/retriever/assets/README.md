@@ -4,9 +4,7 @@
 
 Generation prompt summary: original square app icon for Retriever; stylized red-gold golden retriever head; subtle magnifying-glass and compass-star cues; no text, watermark, brand marks, or photorealism.
 
-Original generated source path:
-
-`/Users/daniel/.codex/generated_images/019f709f-caf4-7fa0-b54b-c3316e092ec1/call_GWLqZVcwKSwXYFxyPutiykup.png`
+The original local generation output is intentionally not part of this distributable repository.
 
 Derived files:
 

@@ -1,6 +1,6 @@
 # Automation
 
-Retriever recurring runs should be configured through Codex automations after the user chooses a cadence.
+Retriever recurring runs should be configured through Codex **Scheduled** after the user chooses a cadence and explicitly authorizes retrieval. Installation and profile onboarding never create a background job by themselves. See [Using Retriever with Codex](CODEX.md#scheduled-retrieval) for the user-facing setup path.
 
 ## Schedule Prompt
 
@@ -16,5 +16,7 @@ First run `python3 <plugin-root>/scripts/retriever.py setup-status` and treat it
 - For "every morning at 9:00", use a daily wall-clock schedule in the user's local timezone.
 - If the automation tool rejects a schedule representation, retry with that tool's supported daily wall-clock format while preserving the requested cadence.
 - Tell the user that local scheduled retrieval depends on Codex, Chrome, and the machine/session being available.
-- Do not create a scheduled retrieval until `setup-status` reports `ready_for_retrieval: true`.
+- Do not create a scheduled retrieval until `setup-status` reports `ready_for_retrieval: true` and the user explicitly agrees to retrieval.
 - When removing Retriever, delete its own schedules through the `retriever-uninstall` flow before using the Plugins UI. Preserve unrelated Codex automations and local data unless the user explicitly chooses a reset.
+
+Reference: [OpenAI Scheduled tasks documentation](https://learn.chatgpt.com/docs/automations).
