@@ -1,4 +1,4 @@
 interface:
   display_name: "Retriever Onboard"
-  short_description: "Build a local job-search profile."
-  default_prompt: "Use $retriever-onboard to ask for my resume, search preferences, locations, companies, and cadence before creating USER.md."
+  short_description: "Build a scheduled local job-search profile."
+  default_prompt: "Use $retriever-onboard to build my job-search profile and set a daily, weekly, or monthly cadence."

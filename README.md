@@ -124,6 +124,14 @@ Check whether local state is intact and ready without creating files, directorie
 python3 plugins/retriever/scripts/retriever.py setup-status
 ```
 
+Plan, without creating, a user-approved Codex Scheduled recurrence:
+
+```bash
+python3 plugins/retriever/scripts/retriever.py schedule plan --cadence "Weekly on Monday at 8:00 AM local time"
+```
+
+Supported forms are daily at a time, weekly on a weekday at a time, and monthly on a calendar day at a time. Codex Scheduled runs RRULEs in the machine's local timezone, so Retriever requires an explicit local-time confirmation and never silently converts a named timezone.
+
 Use a temporary state directory for demos or tests:
 
 ```bash
@@ -206,7 +214,7 @@ Use Codex's `plugin-creator` validation for `plugins/retriever` and `skill-creat
 
 ## Uninstall and Scheduled Searches
 
-Before uninstalling Retriever, tell it `Uninstall Retriever and delete its schedules`. Retriever will identify only its own Codex automations, show them for confirmation, and remove them before you use the Plugins UI. By default it preserves `~/.retriever`; choose a separate explicit reset or full-data deletion if you do not want to retain local data. A Retriever schedule uses the currently loaded `$retriever-retrieve` skill at execution time and must never persist a versioned `~/.codex/plugins/cache/...` runtime path, so a normal plugin update or reinstall does not invalidate a healthy profile.
+Before uninstalling Retriever, tell it `Uninstall Retriever and delete its schedules`. Retriever will identify only its own Codex automations, show them for confirmation, and remove them before you use the Plugins UI. By default it preserves `~/.retriever`; choose a separate explicit reset or full-data deletion if you do not want to retain local data. Retriever validates an explicit daily, weekly, or monthly **machine-local** cadence and creates or updates one Retriever-owned task rather than duplicating it when a user changes frequency. A Retriever schedule uses the currently loaded `$retriever-retrieve` skill at execution time and must never persist a versioned `~/.codex/plugins/cache/...` runtime path, so a normal plugin update or reinstall does not invalidate a healthy profile.
 
 Plugin skills become available in a new chat after installation. Retriever therefore uses the first interactive **Try it now** or **Start my job search** conversation for onboarding and an explicit uninstall cleanup flow for scheduled automations; it does not claim a background install lifecycle event.
 

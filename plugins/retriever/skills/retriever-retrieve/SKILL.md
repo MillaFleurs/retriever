@@ -109,7 +109,25 @@ If warnings are present, surface them to the user as warnings only. Do not compl
 
 ## Scheduling
 
-When the user asks for recurring retrieval, use Codex automations if available and schedule a task that invokes `$retriever-retrieve` at the chosen cadence. State that local scheduled retrieval depends on Codex and the user's machine/session being available.
+When the user asks for recurring retrieval, use Codex automations if available and schedule a task that invokes `$retriever-retrieve` at the chosen local-time cadence. State that local scheduled retrieval depends on Codex and the user's machine/session being available.
+
+## Cadence Contract
+
+Before creating or updating a task, convert the exact user-approved cadence with:
+
+```bash
+python3 <plugin-root>/scripts/retriever.py schedule plan --cadence "<user-approved cadence>"
+```
+
+The supported forms are:
+
+- `Daily at 8:00 AM local time`
+- `Weekly on Monday at 8:00 AM local time`
+- `Monthly on day 15 at 8:00 AM local time`
+
+If the plan is invalid, ask for the missing frequency, weekday or month-day, time, or local-time confirmation. Do not create a task and never invent those values.
+
+Use the plan's `rrule` unchanged with Codex automation tooling. The task runs in the Codex machine's local timezone. If a user named a timezone, ask for an explicit local-time confirmation before the plan command; do not silently convert it. First identify an existing Retriever-owned task and update it; create a task only when none exists. Preserve its project, model, notification settings, and non-cadence behavior. A change from daily to weekly or monthly must update the existing task rather than create a second schedule.
 
 Use this scheduled-task prompt template:
 
@@ -117,6 +135,6 @@ Use this scheduled-task prompt template:
 First invoke `$retriever-retrieve`. At execution time, let that loaded skill resolve its own installed plugin root and run Retriever’s authoritative `setup-status` configuration gate. Do not store, infer, or invoke a versioned `~/.codex/plugins/cache/...` runtime path in this scheduled task. If `ready_for_retrieval` is false or `database_integrity` is not `ok`, skip the scan without opening Chrome, creating or finishing a run, writing jobs, or writing reports. State that interactive onboarding is required and direct the user to start a Codex chat and select “Start my job search”. Otherwise, use `$retriever-retrieve` to check active companies in ~/.retriever for jobs matching the active USER.md profile. Then use `$retriever-report` to report jobs first seen since the previous scheduled run or since yesterday, whichever is available. Show counts, top ranked matches if there are many results, offer the full database/CSV, ask whether the user wants help identifying potential referrers for promising roles, ask whether preferences need updates, and do not submit applications or contact employers.
 ```
 
-If an existing Retriever schedule reports that a versioned cache runtime is missing, inspect its current `setup-status` through the installed skill. Do not call a healthy local profile stale merely because an obsolete cache path is missing. Update that existing Retriever-owned automation with the template above while preserving its cadence, timezone, project, model, and notification settings. Repairing the task must not trigger a scan.
+If an existing Retriever schedule reports that a versioned cache runtime is missing, inspect its current `setup-status` through the installed skill. Do not call a healthy local profile stale merely because an obsolete cache path is missing. Update that existing Retriever-owned automation with the template above while preserving its local-time cadence, project, model, and notification settings. Repairing the task must not trigger a scan.
 
-Do not create a schedule until the user has chosen cadence and scope. For "every morning at 9:00", use a daily wall-clock schedule for the user's local timezone. If an automation tool rejects one schedule representation, retry using that tool's supported daily wall-clock form while preserving the user's requested cadence.
+Do not create a schedule until the user has chosen cadence and scope. A valid explicitly chosen cadence authorizes recurring retrieval but does not authorize an immediate first search. If an automation tool rejects one schedule representation, retry using that tool's supported daily, weekly, or monthly wall-clock form while preserving the exact planned recurrence.

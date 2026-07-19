@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from . import db
+from . import db, schedule
 
 
 def normalize_profile(payload: dict[str, object]) -> dict[str, object]:
@@ -14,6 +14,7 @@ def normalize_profile(payload: dict[str, object]) -> dict[str, object]:
     missing = [key for key in required if not payload.get(key)]
     if missing:
         raise ValueError(f"profile missing required field(s): {', '.join(missing)}")
+    schedule.require_local_time(str(payload["cadence"]))
     return payload
 
 
@@ -104,7 +105,7 @@ def write_profile(conn, profile: dict[str, object], *, state_dir: str | Path | N
     for company in _list(profile.get("dream_companies")):
         db.add_target(conn, "company", str(company))
     if profile.get("cadence"):
-        db.add_target(conn, "cadence", str(profile.get("cadence")))
+        db.replace_active_target(conn, "cadence", str(profile.get("cadence")))
 
     for company in _list(profile.get("companies")):
         if isinstance(company, dict):

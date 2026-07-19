@@ -1,6 +1,6 @@
 ---
 name: retriever-manage
-description: Use when a user wants to add or remove companies, change target roles, industries, locations, or cadence, archive jobs or companies, restore search direction, or update Retriever's local profile after onboarding.
+description: Use when a user wants to add or remove companies, change target roles, industries, locations, or cadence, repair or update a Retriever schedule, archive jobs or companies, restore search direction, or update Retriever's local profile after onboarding.
 ---
 
 # Retriever Manage
@@ -27,6 +27,7 @@ Do not trigger from a Boston location or another Boston employer. Never use this
 - A job-findings reset deletes jobs, observations, and retrieval-run history while preserving `USER.md`, companies, and targets.
 - Do not infer a full profile/database wipe from "same roles" or "start fresh with jobs"; ask a direct confirmation question before deleting profile, companies, targets, or `USER.md`.
 - Explain when a company, role, or location change will affect future retrieval versus existing reports.
+- When the user changes cadence or reports a Retriever schedule problem, use the deterministic `schedule plan --cadence` command and Codex automation tooling to update the one Retriever-owned task. Do not infer a day, time, local-time conversion, or recurrence frequency.
 - Keep the career-coach persona practical and specific.
 - Continue to treat Retriever as intelligence only; no applications or employer messages.
 - Treat "ignore this job" as a request to archive a specific job only when exactly one current job is clearly identified.
@@ -106,3 +107,15 @@ python3 <plugin-root>/scripts/retriever.py profile write --json <profile.json>
 ```
 
 If a dream company does not match current locations, explain the mismatch and ask whether the user wants remote-only monitoring, a location expansion, or an archive.
+
+## Updating a Cadence
+
+Accept only an explicit local-time cadence: `Daily at 8:00 AM local time`, `Weekly on Monday at 8:00 AM local time`, or `Monthly on day 15 at 8:00 AM local time`. If the user supplies a named timezone, ask them to confirm the corresponding Codex machine-local time; do not silently schedule it.
+
+Before updating the profile or task, run:
+
+```bash
+python3 <plugin-root>/scripts/retriever.py schedule plan --cadence "<user-approved cadence>"
+```
+
+Use the returned `rrule` exactly. Update the existing Retriever-owned Codex automation when found; create one only if none exists. Preserve its project, model, notification settings, and all non-cadence settings. Codex Scheduled runs this rule in the machine's local timezone. Use the version-agnostic task template from `$retriever-retrieve`; never persist a versioned plugin-cache path. If the cadence changes, the profile runtime keeps exactly one active cadence target so future schedules and reports cannot silently use an older recurrence.

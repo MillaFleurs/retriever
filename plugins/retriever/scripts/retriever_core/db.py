@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
+from . import schedule
 from .injection import InjectionWarning
 
 
@@ -75,6 +76,8 @@ def setup_status(state_dir: str | Path | None = None) -> dict[str, object]:
         "visible_jobs": 0,
         "active_targets": 0,
         "active_target_counts": {kind: 0 for kind in TARGET_KINDS},
+        "cadence_integrity": "missing",
+        "cadence_plan": None,
         "latest_run": None,
     }
 
@@ -140,6 +143,29 @@ def setup_status(state_dir: str | Path | None = None) -> dict[str, object]:
                         ),
                     }
                 )
+                cadence_rows = list(
+                    conn.execute(
+                        "SELECT value FROM targets WHERE archived = 0 AND kind = 'cadence' ORDER BY updated_at DESC, id DESC"
+                    )
+                )
+                if len(cadence_rows) == 1:
+                    try:
+                        result["cadence_plan"] = schedule.plan(cadence_rows[0]["value"])
+                    except ValueError as exc:
+                        result["cadence_integrity"] = "invalid"
+                        result["cadence_error"] = str(exc)
+                    else:
+                        if result["cadence_plan"]["requires_local_timezone_confirmation"]:
+                            result["cadence_integrity"] = "needs_local_timezone_confirmation"
+                            result["cadence_error"] = (
+                                "the saved cadence names a timezone; confirm the desired Codex machine local time "
+                                "before updating its scheduled task"
+                            )
+                        else:
+                            result["cadence_integrity"] = "ok"
+                elif cadence_rows:
+                    result["cadence_integrity"] = "ambiguous"
+                    result["cadence_error"] = "multiple active cadence targets"
         except (OSError, sqlite3.Error) as exc:
             result["database_integrity"] = "unreadable"
             result["database_integrity_detail"] = str(exc)
@@ -154,9 +180,13 @@ def setup_status(state_dir: str | Path | None = None) -> dict[str, object]:
         missing_setup.append("valid Retriever database")
     active_target_counts = result["active_target_counts"]
     assert isinstance(active_target_counts, dict)
-    for kind in REQUIRED_TARGET_KINDS:
+    for kind in ("role", "location"):
         if active_target_counts.get(kind, 0) == 0:
             missing_setup.append(f"active {kind} target")
+    if active_target_counts.get("cadence", 0) == 0:
+        missing_setup.append("active cadence target")
+    elif result["cadence_integrity"] in {"invalid", "ambiguous"}:
+        missing_setup.append("one valid active cadence target")
     if result["active_companies"] == 0:
         missing_setup.append("active company")
 
@@ -355,6 +385,29 @@ def add_target(conn: sqlite3.Connection, kind: str, value: str) -> sqlite3.Row:
         (kind, value.strip(), timestamp, timestamp),
     )
     conn.commit()
+    return conn.execute("SELECT * FROM targets WHERE kind = ? AND value = ?", (kind, value.strip())).fetchone()
+
+
+def replace_active_target(conn: sqlite3.Connection, kind: str, value: str) -> sqlite3.Row:
+    """Keep exactly one active value for a singleton target such as cadence."""
+    if kind not in TARGET_KINDS:
+        raise ValueError(f"unsupported target kind: {kind}")
+    if not value.strip():
+        raise ValueError("target value is required")
+    timestamp = now_utc()
+    with conn:
+        conn.execute(
+            "UPDATE targets SET archived = 1, updated_at = ? WHERE kind = ? AND archived = 0 AND value <> ?",
+            (timestamp, kind, value.strip()),
+        )
+        conn.execute(
+            """
+            INSERT INTO targets (kind, value, created_at, updated_at, archived)
+            VALUES (?, ?, ?, ?, 0)
+            ON CONFLICT(kind, value) DO UPDATE SET updated_at = excluded.updated_at, archived = 0
+            """,
+            (kind, value.strip(), timestamp, timestamp),
+        )
     return conn.execute("SELECT * FROM targets WHERE kind = ? AND value = ?", (kind, value.strip())).fetchone()
 
 

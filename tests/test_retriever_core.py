@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "plugins" / "retriever" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from retriever_core import dashboard, db, profile  # noqa: E402
+from retriever_core import dashboard, db, profile, schedule  # noqa: E402
 from retriever_core.db import JobInput  # noqa: E402
 from retriever_core.injection import scan_text  # noqa: E402
 from retriever_core import reports  # noqa: E402
@@ -223,6 +223,24 @@ class RetrieverCoreTests(unittest.TestCase):
         self.assertNotIn("python3 <plugin-root>", automation)
         self.assertNotIn("python3 /users/", automation.lower())
 
+    def test_onboarding_and_cadence_management_use_the_supported_schedule_plan(self) -> None:
+        onboard = (ROOT / "plugins" / "retriever" / "skills" / "retriever-onboard" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        manage = (ROOT / "plugins" / "retriever" / "skills" / "retriever-manage" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+
+        for content in (onboard, manage):
+            self.assertIn("schedule plan --cadence", content)
+            self.assertIn("daily", content.lower())
+            self.assertIn("weekly", content.lower())
+            self.assertIn("monthly", content.lower())
+            self.assertIn("automation", content.lower())
+            self.assertIn("local time", content.lower())
+
+        self.assertIn("machine-local time", onboard.lower())
+
     def test_job_results_always_offer_the_interactive_dashboard(self) -> None:
         manifest = json.loads((ROOT / "plugins" / "retriever" / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
         report_skill = (ROOT / "plugins" / "retriever" / "skills" / "retriever-report" / "SKILL.md").read_text(
@@ -240,6 +258,114 @@ class RetrieverCoreTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "companies, cadence"):
             profile.normalize_profile(incomplete)
+
+        incomplete = self.demo_profile()
+        incomplete["cadence"] = "Weekly"
+        with self.assertRaisesRegex(ValueError, "cadence must specify"):
+            profile.normalize_profile(incomplete)
+
+    def test_profile_replaces_the_active_cadence_instead_of_accumulating_schedules(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            daily = self.demo_profile()
+            weekly = self.demo_profile()
+            weekly["cadence"] = "Weekly on Monday at 8:00 AM local time"
+
+            profile.write_profile(conn, daily, state_dir=tmp)
+            profile.write_profile(conn, weekly, state_dir=tmp)
+
+            active_cadences = [row["value"] for row in db.list_targets(conn) if row["kind"] == "cadence"]
+            self.assertEqual([weekly["cadence"]], active_cadences)
+            status = db.setup_status(tmp)
+            self.assertEqual("ok", status["cadence_integrity"])
+            self.assertEqual("weekly", status["cadence_plan"]["frequency"])
+
+    def test_schedule_plan_supports_daily_weekly_and_monthly_cadences(self) -> None:
+        daily = schedule.plan("Daily at 8:00 AM local time")
+        weekly = schedule.plan("Weekly on Monday at 8:00 AM local time")
+        monthly = schedule.plan("Monthly on day 15 at 8:00 AM local time")
+
+        self.assertEqual("RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=8;BYMINUTE=0;BYSECOND=0", daily["rrule"])
+        self.assertEqual(
+            "RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=MO;BYHOUR=8;BYMINUTE=0;BYSECOND=0", weekly["rrule"]
+        )
+        self.assertEqual(
+            "RRULE:FREQ=MONTHLY;INTERVAL=1;BYMONTHDAY=15;BYHOUR=8;BYMINUTE=0;BYSECOND=0", monthly["rrule"]
+        )
+        self.assertEqual("local", daily["timezone"])
+
+    def test_schedule_plan_uses_local_time_only_when_the_user_asks_for_local_time(self) -> None:
+        plan = schedule.plan("Daily at 8 AM local time")
+
+        self.assertEqual("local", plan["timezone"])
+        self.assertEqual("RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=8;BYMINUTE=0;BYSECOND=0", plan["rrule"])
+
+        with self.assertRaisesRegex(ValueError, "cadence must specify"):
+            schedule.plan("Weekly")
+
+    def test_named_timezone_requires_local_confirmation_before_scheduling(self) -> None:
+        named = schedule.plan("Daily at 8:00 AM America/New_York")
+
+        self.assertEqual("America/New_York", named["timezone"])
+        self.assertTrue(named["requires_local_timezone_confirmation"])
+        with self.assertRaisesRegex(ValueError, "machine's local time"):
+            schedule.require_local_time("Daily at 8:00 AM America/New_York")
+
+    def test_schedule_plan_cli_returns_a_local_rrule_and_rejects_named_timezone_conversion(self) -> None:
+        local = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "retriever.py"),
+                "schedule",
+                "plan",
+                "--cadence",
+                "Monthly on day 15 at 8:00 AM local time",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, local.returncode, local.stderr)
+        self.assertEqual("local", json.loads(local.stdout)["scheduler_timezone"])
+
+        named = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "retriever.py"),
+                "schedule",
+                "plan",
+                "--cadence",
+                "Monthly on day 15 at 8:00 AM America/New_York",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(2, named.returncode)
+        self.assertFalse(json.loads(named.stdout)["valid"])
+
+    def test_legacy_named_timezone_profile_remains_retrievable_but_flags_schedule_reconfirmation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            legacy = self.demo_profile()
+            legacy["cadence"] = "Daily at 8:00 AM America/New_York"
+
+            # Simulate a profile saved by a pre-local-time Retriever release.
+            legacy["cadence"] = "Daily at 8:00 AM America/New_York"
+            conn.execute(
+                "INSERT INTO targets (kind, value, created_at, updated_at, archived) VALUES ('role', 'Technical Program Manager', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0)"
+            )
+            conn.execute(
+                "INSERT INTO targets (kind, value, created_at, updated_at, archived) VALUES ('location', 'Remote', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0)"
+            )
+            conn.execute(
+                "INSERT INTO targets (kind, value, created_at, updated_at, archived) VALUES ('cadence', ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0)",
+                (legacy["cadence"],),
+            )
+            db.add_company(conn, "Example AI", careers_url="https://example.com/careers")
+            db.user_md_path(tmp).write_text("# Retriever User Profile\n", encoding="utf-8")
+
+            status = db.setup_status(tmp)
+            self.assertTrue(status["ready_for_retrieval"])
+            self.assertEqual("needs_local_timezone_confirmation", status["cadence_integrity"])
 
     def test_run_start_rejects_unconfigured_state_without_creating_a_run(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

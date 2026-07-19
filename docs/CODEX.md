@@ -52,7 +52,7 @@ Start my job search
 
 Retriever begins with career-coach intake only when there is no valid local profile. It asks for a resume or experience summary, roles, locations, industries, companies, and cadence; it never fills missing search criteria from guesses or prior chat context.
 
-Once onboarding saves and verifies the profile, Retriever reports the active-company count and asks whether to run the first search. Its estimate is roughly three minutes per active company. It does not open Chrome, start a retrieval run, or create a schedule until the user explicitly agrees.
+Once onboarding saves and verifies the profile, Retriever creates or updates its one recurring task for the user-approved local-time cadence, reports the active-company count, and asks whether to run the first search. Its estimate is roughly three minutes per active company. It does not open Chrome or start a retrieval run until the user explicitly agrees.
 
 You can then use natural prompts such as:
 
@@ -79,9 +79,11 @@ Reference: [Build plugins: marketplace sources](https://learn.chatgpt.com/docs/b
 
 ## Scheduled Retrieval
 
-Retriever creates recurring checks through Codex **Scheduled** only after the user chooses a cadence and explicitly authorizes retrieval. Installation and onboarding never create a background job on their own. At execution time, the scheduled task invokes the currently loaded `$retriever-retrieve` skill, which resolves its own installed runtime and reruns Retriever's local preflight before opening Chrome. A scheduled task must never store or invoke a versioned `~/.codex/plugins/cache/...` path; plugin updates and reinstalls can replace those cache directories. If the profile or database is incomplete, Retriever skips the scan and directs the user back to onboarding.
+Retriever creates recurring checks through Codex **Scheduled** only after the user gives a fully specified daily, weekly, or monthly cadence. That cadence authorizes the recurring task, while an immediate first search still requires a separate yes. Retriever validates the cadence and derives the exact wall-clock recurrence before it creates or updates one Retriever-owned task. At execution time, the task invokes the currently loaded `$retriever-retrieve` skill, which resolves its own installed runtime and reruns Retriever's local preflight before opening Chrome. A scheduled task must never store or invoke a versioned `~/.codex/plugins/cache/...` path; plugin updates and reinstalls can replace those cache directories. If the profile or database is incomplete, Retriever skips the scan and directs the user back to onboarding.
 
 Use the Retriever conversation to request a schedule, or open the Scheduled create flow in the desktop app. Local job checks depend on Codex, Chrome, and the user's machine/session being available at run time.
+
+Use a cadence such as `Daily at 8:00 AM local time`, `Weekly on Monday at 8:00 AM local time`, or `Monthly on day 15 at 8:00 AM local time`. Retriever validates that wording before creating the task and updates the existing Retriever task rather than creating duplicates. Codex Scheduled uses the machine's local timezone for the RRULE; if you name another timezone, Retriever asks you to confirm the equivalent local time rather than silently converting it.
 
 If a scheduled run names a missing versioned Retriever cache directory, that error alone does not mean the saved job-search profile is stale. Ask Retriever to repair the daily schedule; it should check the active profile through the current skill, update only the Retriever-owned task while preserving its schedule settings, and not trigger a scan during the repair.
 

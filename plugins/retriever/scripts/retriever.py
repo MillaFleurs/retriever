@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from retriever_core import dashboard, db, profile, reports
+from retriever_core import dashboard, db, profile, reports, schedule
 from retriever_core.db import JobInput
 from retriever_core.injection import scan_text
 
@@ -61,6 +61,16 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def cmd_setup_status(args: argparse.Namespace) -> int:
     print(db.dump_json(db.setup_status(raw_state_dir_from_args(args))))
+    return 0
+
+
+def cmd_schedule_plan(args: argparse.Namespace) -> int:
+    try:
+        planned = schedule.require_local_time(args.cadence)
+    except ValueError as exc:
+        print(db.dump_json({"valid": False, "message": str(exc)}))
+        return 2
+    print(db.dump_json({"valid": True, "cadence": args.cadence, **planned}))
     return 0
 
 
@@ -534,6 +544,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Check local profile and database integrity before onboarding or retrieval without creating local state.",
     )
     setup_status.set_defaults(func=cmd_setup_status)
+
+    schedule_parser = sub.add_parser(
+        "schedule",
+        help="Plan a daily, weekly, or monthly Codex Scheduled recurrence without creating an automation.",
+    )
+    schedule_sub = schedule_parser.add_subparsers(dest="schedule_command", required=True)
+    schedule_plan = schedule_sub.add_parser("plan", help="Convert an explicit cadence to a Codex wall-clock RRULE.")
+    schedule_plan.add_argument("--cadence", required=True)
+    schedule_plan.set_defaults(func=cmd_schedule_plan)
 
     profile_parser = sub.add_parser("profile", help="Create or update USER.md.")
     profile_sub = profile_parser.add_subparsers(dest="profile_command", required=True)

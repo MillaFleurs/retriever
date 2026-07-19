@@ -60,7 +60,7 @@ Collect enough information to create `USER.md` and an active company list:
 - Target locations and remote/hybrid constraints.
 - Dream companies.
 - Companies to exclude.
-- Retrieval cadence.
+- Retrieval cadence. Ask for a day/frequency and a time in the Codex machine's local time. Require one explicit supported form: `Daily at 8:00 AM local time`, `Weekly on Monday at 8:00 AM local time`, or `Monthly on day 15 at 8:00 AM local time`. If the user names a timezone, do not silently convert it; ask whether the equivalent machine-local time is correct before saving or scheduling.
 
 If a user prefers a short note like "I worked at X and graduated from Y", accept it and ask only the missing questions needed to search.
 
@@ -91,9 +91,20 @@ python3 <plugin-root>/scripts/retriever.py setup-status
 python3 <plugin-root>/scripts/retriever.py init
 python3 <plugin-root>/scripts/retriever.py profile write --json <profile.json>
 python3 <plugin-root>/scripts/retriever.py company add "<company>" --careers-url "<url>" --research-url "<source>"
+python3 <plugin-root>/scripts/retriever.py schedule plan --cadence "<user-approved cadence>"
 ```
 
-The profile JSON must come from this user's current conversation or uploaded documents. It must contain `name`, one or more `roles`, one or more `locations`, one or more seeded `companies`, and a `cadence`. For demos, use `examples/demo/profile.json` from the repository, not a real user's profile.
+The profile JSON must come from this user's current conversation or uploaded documents. It must contain `name`, one or more `roles`, one or more `locations`, one or more seeded `companies`, and a valid local-time `cadence`. The runtime rejects incomplete cadence wording and named-timezone conversion instead of guessing a day, time, or timezone. For demos, use `examples/demo/profile.json` from the repository, not a real user's profile.
+
+## Recurring Schedule Creation
+
+An explicit valid cadence is the user's authorization to create or update their recurring Retriever task. It is not consent to run an immediate first search.
+
+1. After saving the profile, run `schedule plan --cadence` with the exact saved cadence. If it returns `valid: false`, ask the user for the missing day or time, or ask them to confirm the intended machine-local time; do not create a task.
+2. Use Codex automation tooling to find an existing Retriever-owned job-search task. Update it when found; create one only when no Retriever task exists. Never create duplicates when a user changes daily, weekly, or monthly cadence.
+3. Use the plan's `rrule` unchanged. Explain that Codex Scheduled runs the task in the machine's local timezone; never claim that a named timezone is preserved by the task.
+4. Use the version-agnostic scheduled-task template in `$retriever-retrieve`. Do not place a `~/.codex/plugins/cache/...` path in the task.
+5. If automation tooling is unavailable, say the profile is saved but the schedule still needs to be created in Codex; do not claim it is scheduled.
 
 ## Output Standard
 
@@ -110,4 +121,4 @@ When it returns `ready_for_retrieval: true`, use its `active_companies` value to
 
 > Your profile is ready. I have `<active_companies>` active companies to check. A first search may take about `<active_companies * 3>` minutes—roughly three minutes per company. Would you like me to run it now?
 
-Use the current `active_companies` value; never invent a company count or duration. Do not start a retrieval run, open Chrome, inspect a career site, start the dashboard, or create a schedule until the user explicitly agrees to the first search. Treat “yes,” “run it,” or an equivalent clear instruction as consent. If the user declines or defers, confirm that the profile is saved and wait for a later retrieval request.
+Use the current `active_companies` value; never invent a company count or duration. Do not start a retrieval run, open Chrome, inspect a career site, or start the dashboard until the user explicitly agrees to the first search. Treat “yes,” “run it,” or an equivalent clear instruction as consent. If the user declines or defers, confirm that the profile and its requested recurring schedule are saved, then wait for a later retrieval request.
