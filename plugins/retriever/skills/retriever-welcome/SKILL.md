@@ -71,6 +71,8 @@ Do not lead with a technical status, a command, a source reference, or a six-ite
 
 Only when the user explicitly asks to continue their saved Retriever profile and `ready_for_retrieval` is true, greet them with a compact current-state summary and ask what they want to do: check company sites, change preferences, manage archives, or see a report. Do not start a search just because they said hello.
 
+When a user with a ready profile asks for “the web page,” “the webpage,” or “the job page” without naming an employer page, route them to the local Retriever dashboard through `$retriever-report`; do not open a company careers page.
+
 ### Incomplete or Damaged State
 
 If the state exists but `ready_for_retrieval` is false:

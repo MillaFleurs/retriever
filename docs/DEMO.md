@@ -13,7 +13,7 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 5. Approve the retrieval and run a pass against company career pages with Chrome.
 6. Show new matching jobs or a deterministic fixture if live results are not stable.
 7. Show prompt-injection warning behavior with the scanner.
-8. Ask to see found jobs and show that Retriever automatically starts or reuses the loopback-only interactive dashboard.
+8. Ask to see found jobs—or show a successful scheduled result—and verify Retriever automatically starts or reuses the loopback-only interactive dashboard instead of opening an employer careers page.
 9. Point out its total-job, shown-job, and archived-job counts; download the archived-job CSV.
 10. Archive one job with its confirmation-gated button, show that later reports hide it, then stop the local dashboard.
 11. Show the fresh-start path: preview `reset jobs`, confirm it, then show that profile, companies, and targets remain while job findings are cleared.

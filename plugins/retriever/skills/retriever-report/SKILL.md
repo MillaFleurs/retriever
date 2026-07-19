@@ -13,13 +13,15 @@ Do not mention internal skill routing such as "I will use Retriever's workflow."
 
 ## Dashboard-First Results
 
-For every interactive user request to show found jobs, job results, or a Retriever report, check `setup-status` first. When the local database is valid, Always start or reuse the interactive dashboard before presenting the chat summary:
+For every request to show found jobs, job results, or a Retriever report—including the result of a successful scheduled retrieval—check `setup-status` first. When the local database is valid, Always start or reuse the interactive dashboard before presenting the chat summary:
 
 ```bash
 python3 <plugin-root>/scripts/retriever.py dashboard start --ranked
 ```
 
 Share the returned local URL prominently, then provide the requested concise summary, full report, CSV, or static HTML file. The dashboard is the normal place to review, archive, and download archived jobs; do not make the user discover it by asking a separate question. If the dashboard cannot start, state that clearly and still provide a safe read-only report when available.
+
+Interpret an unqualified request such as “show the web page,” “can I see the webpage,” or “open the job page” as a request for Retriever’s local dashboard, **not an employer careers page**. Open an external careers page only when the user expressly names that company page, a particular role, or a URL.
 
 Keep the dashboard running while the user is reviewing jobs. Stop it only when the user asks to stop or close it:
 

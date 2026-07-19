@@ -95,7 +95,7 @@ Open my Retriever job dashboard.
 Export my Retriever jobs as an HTML dashboard.
 ```
 
-Codex invokes Retriever's bundled skills and local runtime under the hood. When a user asks about found jobs, Retriever starts or reuses its local interactive dashboard and shares the URL automatically. Installation itself cannot collect a resume or preferences in the background: that information is collected only in the first interactive chat. Live career-site retrieval still requires the Chrome plugin to be installed and enabled. Retriever uses the normal Chrome browser identity; it does not alter or append its name to the User-Agent string.
+Codex invokes Retriever's bundled skills and local runtime under the hood. When a user asks about found jobs, or when a scheduled retrieval succeeds, Retriever starts or reuses its local interactive dashboard and shares the URL automatically. An unqualified request for “the web page” means that local SQLite-backed dashboard, not an employer careers page. Installation itself cannot collect a resume or preferences in the background: that information is collected only in the first interactive chat. Live career-site retrieval still requires the Chrome plugin to be installed and enabled. Retriever uses the normal Chrome browser identity; it does not alter or append its name to the User-Agent string.
 
 References: [OpenAI Plugins documentation](https://learn.chatgpt.com/docs/plugins), [Codex Chrome extension documentation](https://learn.chatgpt.com/docs/chrome-extension), [Using Retriever with Codex](docs/CODEX.md).
 

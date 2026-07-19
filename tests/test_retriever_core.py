@@ -329,6 +329,21 @@ class RetrieverCoreTests(unittest.TestCase):
         self.assertIn("dashboard start --ranked", report_skill)
         self.assertIn("Always start or reuse", report_skill)
 
+    def test_scheduled_results_start_the_local_dashboard_and_disambiguate_web_page_requests(self) -> None:
+        retrieve_skill = (ROOT / "plugins" / "retriever" / "skills" / "retriever-retrieve" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        report_skill = (ROOT / "plugins" / "retriever" / "skills" / "retriever-report" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        automation = (ROOT / "docs" / "AUTOMATION.md").read_text(encoding="utf-8")
+
+        self.assertIn("For every successful retrieval", retrieve_skill)
+        self.assertIn("dashboard start --ranked", retrieve_skill)
+        self.assertNotIn("without starting a long-running dashboard service", retrieve_skill)
+        self.assertIn("not an employer careers page", report_skill)
+        self.assertIn("start or reuse the local interactive dashboard", automation.lower())
+
     def test_post_install_starter_is_a_fresh_profile_boundary(self) -> None:
         manifest = json.loads((ROOT / "plugins" / "retriever" / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
         onboard = (ROOT / "plugins" / "retriever" / "skills" / "retriever-onboard" / "SKILL.md").read_text(
