@@ -91,30 +91,68 @@ def profile_to_markdown(profile: dict[str, object], *, state_dir: str | Path | N
     return "\n".join(lines)
 
 
-def write_profile(conn, profile: dict[str, object], *, state_dir: str | Path | None = None) -> Path:
+def write_profile(
+    conn,
+    profile: dict[str, object],
+    *,
+    state_dir: str | Path | None = None,
+    runtime_identity: str = "",
+) -> Path:
+    """Replace the active search profile instead of merging stale preferences.
+
+    A profile payload is the complete, currently approved search direction.  In
+    particular, a fresh onboarding must not inherit active or archived targets,
+    companies, job findings, or run history from an earlier local profile.
+    """
     profile = normalize_profile(profile)
     path = db.user_md_path(state_dir)
+    timestamp = db.now_utc()
+    with conn:
+        # Companies own jobs by a cascading foreign key.  Clear the supporting
+        # run history explicitly as it is independent of that relationship.
+        conn.execute("DELETE FROM companies")
+        conn.execute("DELETE FROM retrieval_runs")
+        conn.execute("DELETE FROM targets")
+
+        for kind, values in (
+            ("role", _list(profile.get("roles"))),
+            ("industry", _list(profile.get("industries"))),
+            ("location", _list(profile.get("locations"))),
+            ("company", _list(profile.get("dream_companies"))),
+        ):
+            for value in values:
+                conn.execute(
+                    "INSERT INTO targets (kind, value, created_at, updated_at, archived) VALUES (?, ?, ?, ?, 0)",
+                    (kind, str(value).strip(), timestamp, timestamp),
+                )
+        conn.execute(
+            "INSERT INTO targets (kind, value, created_at, updated_at, archived) VALUES ('cadence', ?, ?, ?, 0)",
+            (str(profile["cadence"]).strip(), timestamp, timestamp),
+        )
+
+        for company in _list(profile.get("companies")):
+            if isinstance(company, dict):
+                name = str(company.get("name", "")).strip()
+                if not name:
+                    continue
+                conn.execute(
+                    """
+                    INSERT INTO companies (
+                      name, website_url, careers_url, research_url, notes, created_at, updated_at, archived
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+                    """,
+                    (
+                        name,
+                        str(company.get("website_url", "")).strip(),
+                        str(company.get("careers_url", "")).strip(),
+                        str(company.get("research_url", "")).strip(),
+                        str(company.get("notes", "")).strip(),
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+
     path.write_text(profile_to_markdown(profile, state_dir=state_dir), encoding="utf-8")
-
-    for role in _list(profile.get("roles")):
-        db.add_target(conn, "role", str(role))
-    for industry in _list(profile.get("industries")):
-        db.add_target(conn, "industry", str(industry))
-    for location in _list(profile.get("locations")):
-        db.add_target(conn, "location", str(location))
-    for company in _list(profile.get("dream_companies")):
-        db.add_target(conn, "company", str(company))
-    if profile.get("cadence"):
-        db.replace_active_target(conn, "cadence", str(profile.get("cadence")))
-
-    for company in _list(profile.get("companies")):
-        if isinstance(company, dict):
-            db.add_company(
-                conn,
-                str(company.get("name", "")),
-                website_url=str(company.get("website_url", "")),
-                careers_url=str(company.get("careers_url", "")),
-                research_url=str(company.get("research_url", "")),
-                notes=str(company.get("notes", "")),
-            )
+    if runtime_identity:
+        db.write_runtime_identity(state_dir, runtime_identity)
     return path

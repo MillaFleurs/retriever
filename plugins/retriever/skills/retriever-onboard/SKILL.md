@@ -1,6 +1,6 @@
 ---
 name: retriever-onboard
-description: Use when a user first installs or reinstalls Retriever, selects “Start my job search”, starts with “Hey Retriever”, wants to set up a job-search profile, provides a resume or experience summary, changes target roles or locations, or asks Retriever to act as a career coach before searching company career sites.
+description: Use when a user first installs or reinstalls Retriever, selects “Start a fresh private job search”, starts with “Hey Retriever”, wants to set up a job-search profile, provides a resume or experience summary, changes target roles or locations, or asks Retriever to act as a career coach before searching company career sites.
 ---
 
 # Retriever Onboard
@@ -42,13 +42,17 @@ Never invent or infer a search criterion. Every role, location, industry, compan
 
 ## Existing State on Reinstall
 
-If `setup-status` shows a valid, completed profile during install, reinstall, or first wake-up, do not silently archive or delete records. Tell the user existing local state was found and ask which mode they want:
+The post-install starter is **Start a fresh private job search**. It is explicit consent for a fresh profile; it must not resume an earlier Retriever profile, even if `~/.retriever` still exists.
 
-1. Keep existing profile, companies, targets, job findings, and run history.
-2. Keep the profile, companies, and targets but delete job findings and run history with `python3 <plugin-root>/scripts/retriever.py reset jobs` followed by `--confirm-delete` after explicit confirmation.
-3. Full reset, which requires a direct confirmation of exactly which files or database tables should be deleted.
+If that starter was selected, or `setup-status` reports `requires_reinstall_cleanup: true`, run:
 
-Use the job-findings reset for testing language like "same roles, start fresh with jobs." Do not use archive flags to simulate a clean reinstall.
+```bash
+python3 <plugin-root>/scripts/retriever.py reinstall prepare --confirm-fresh-start
+```
+
+Then rerun `setup-status` and require `fresh_onboarding: true` before intake. The command quarantines known active Retriever files locally under `prior-installs`; do not read the backup or carry forward its roles, locations, companies, exclusions, cadence, job findings, or run history. The current onboarding conversation and files supplied in it are the only permitted profile sources.
+
+For an ordinary established profile, use the job-findings reset for explicit language like "same roles, start fresh with jobs." Do not use archive flags to simulate a clean reinstall.
 
 ## Profile Intake
 
@@ -115,7 +119,7 @@ End onboarding by telling the user:
 - Which cadence is configured or still needs a decision.
 - Any dream-company/location mismatches.
 
-Then run `setup-status` again. Do not say onboarding is complete or offer live retrieval until it returns `ready_for_retrieval: true`.
+Then run `setup-status` again. Do not say onboarding is complete or offer live retrieval until it returns `ready_for_retrieval: true`. A profile write replaces all active Retriever targets, companies, job findings, and run history with the explicitly approved current profile; do not add new preferences to retained ones.
 
 When it returns `ready_for_retrieval: true`, use its `active_companies` value to give the user an informed choice before the first live search. Say, in natural career-coach language:
 

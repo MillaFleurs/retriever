@@ -21,7 +21,7 @@ Reference: [OpenAI Devpost rules](https://openai.devpost.com/rules).
 
 ## v1.1 Final Verification
 
-- Reinstall from the marketplace, start a new Codex chat, then select **Try it now** or send **Start my job search**.
+- Reinstall from the marketplace, start a new Codex chat, then select **Try it now** or send **Start a fresh private job search**.
 - With no profile, verify Retriever begins career-coach intake without creating a retrieval run.
 - Complete onboarding and verify Retriever calculates a first-search estimate from the active-company count at roughly three minutes per company, then waits for explicit permission before it opens Chrome.
 - Approve the first search, then run one end-to-end Chrome retrieval and export a report.

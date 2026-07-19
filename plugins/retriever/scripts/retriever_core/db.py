@@ -27,7 +27,11 @@ STATE_ARTIFACT_NAMES = (
     "reports",
     "dashboard-service.json",
     "dashboard-service.log",
+    "runtime.json",
+    "prior-installs",
 )
+RUNTIME_STATE_FILENAME = "runtime.json"
+PRIOR_INSTALLS_DIRECTORY = "prior-installs"
 
 
 def now_utc() -> str:
@@ -58,6 +62,38 @@ def state_paths(state_dir: str | Path | None = None) -> tuple[Path, Path, Path]:
     """Return state, database, and profile paths without mutating local state."""
     state = resolve_state_dir(state_dir)
     return state, state / "retriever.sqlite3", state / "USER.md"
+
+
+def runtime_state_path(state_dir: str | Path | None = None) -> Path:
+    """Return the small, non-profile marker for the runtime that saved state."""
+    return resolve_state_dir(state_dir) / RUNTIME_STATE_FILENAME
+
+
+def read_runtime_identity(state_dir: str | Path | None = None) -> str:
+    """Read a saved runtime identity without creating or trusting state."""
+    path = runtime_state_path(state_dir)
+    if not path.is_file() or path.is_symlink():
+        return ""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return ""
+    value = payload.get("runtime_identity") if isinstance(payload, dict) else ""
+    return value if isinstance(value, str) else ""
+
+
+def write_runtime_identity(state_dir: str | Path | None, runtime_identity: str) -> Path:
+    """Atomically persist the runtime identity after a successful profile write."""
+    if not runtime_identity.strip():
+        raise ValueError("runtime identity is required")
+    path = ensure_state_dir(state_dir) / RUNTIME_STATE_FILENAME
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(
+        dump_json({"runtime_identity": runtime_identity.strip(), "updated_at": now_utc()}) + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(path)
+    return path
 
 
 def state_reset_preview(state_dir: str | Path | None = None) -> dict[str, object]:
@@ -93,7 +129,10 @@ def state_reset_preview(state_dir: str | Path | None = None) -> dict[str, object
             has_profile_marker = "# Retriever User Profile" in profile.read_text(encoding="utf-8")
         except OSError:
             pass
-    if state != default_state and not database.is_file() and not has_profile_marker:
+    has_known_retriever_artifact = any(
+        (state / name).exists() or (state / name).is_symlink() for name in STATE_ARTIFACT_NAMES
+    )
+    if state != default_state and not database.is_file() and not has_profile_marker and not has_known_retriever_artifact:
         result["state_directory_error"] = (
             "custom state reset requires a Retriever database or a marked Retriever USER.md profile"
         )
@@ -116,6 +155,34 @@ def state_reset_preview(state_dir: str | Path | None = None) -> dict[str, object
         str(child) for child in state.iterdir() if child.name not in known_names
     )
     return result
+
+
+def reinstall_prepare_preview(state_dir: str | Path | None = None) -> dict[str, object]:
+    """Preview only active Retriever artifacts that a reinstall will quarantine.
+
+    Prior-install backups are intentionally retained.  They are not live
+    Retriever state and must never be read for a fresh onboarding.
+    """
+    preview = state_reset_preview(state_dir)
+    if preview.get("state_directory_error"):
+        return preview
+    active = [
+        artifact
+        for artifact in preview["known_artifacts"]
+        if Path(str(artifact["path"])).name != PRIOR_INSTALLS_DIRECTORY
+    ]
+    prior = [
+        artifact
+        for artifact in preview["known_artifacts"]
+        if Path(str(artifact["path"])).name == PRIOR_INSTALLS_DIRECTORY
+    ]
+    return {
+        "state_dir": preview["state_dir"],
+        "state_directory_exists": preview["state_directory_exists"],
+        "active_retriever_artifacts": active,
+        "preserved_prior_install_backups": prior,
+        "preserved_unmanaged_entries": preview["preserved_unmanaged_entries"],
+    }
 
 
 def reset_state_artifacts(state_dir: str | Path | None = None) -> dict[str, object]:
@@ -142,11 +209,66 @@ def reset_state_artifacts(state_dir: str | Path | None = None) -> dict[str, obje
     }
 
 
+def quarantine_active_state_for_reinstall(state_dir: str | Path | None = None) -> dict[str, object]:
+    """Move active Retriever state aside so a reinstall cannot reuse it.
+
+    This is deliberately a rename, not a delete.  The retained files remain
+    local and are unavailable to the new profile; a later explicit full reset
+    can remove the ``prior-installs`` directory after preview and confirmation.
+    """
+    preview = reinstall_prepare_preview(state_dir)
+    if preview.get("state_directory_error"):
+        raise ValueError(str(preview["state_directory_error"]))
+
+    active = list(preview["active_retriever_artifacts"])
+    if not active:
+        return {
+            "state_dir": preview["state_dir"],
+            "quarantined_artifacts": [],
+            "prior_install_backup": "",
+            "preserved_unmanaged_entries": preview["preserved_unmanaged_entries"],
+            "fresh_onboarding": True,
+        }
+
+    state = resolve_state_dir(state_dir)
+    retained_root = state / PRIOR_INSTALLS_DIRECTORY
+    if retained_root.is_symlink():
+        raise ValueError("Retriever prior-install backup path must not be a symbolic link")
+    if retained_root.exists() and not retained_root.is_dir():
+        raise ValueError("Retriever prior-install backup path must be a directory")
+    timestamp = now_utc().replace(":", "-")
+    backup = retained_root / timestamp
+    suffix = 1
+    while backup.exists():
+        suffix += 1
+        backup = retained_root / f"{timestamp}-{suffix}"
+    backup.mkdir(parents=True, mode=0o700)
+
+    moved: list[dict[str, str]] = []
+    for artifact in active:
+        path = Path(str(artifact["path"]))
+        destination = backup / path.name
+        path.replace(destination)
+        moved.append({"from": str(path), "to": str(destination), "type": str(artifact["type"])})
+
+    return {
+        "state_dir": str(state),
+        "quarantined_artifacts": moved,
+        "prior_install_backup": str(backup),
+        "preserved_unmanaged_entries": preview["preserved_unmanaged_entries"],
+        "fresh_onboarding": True,
+    }
+
+
 def _readonly_connection(database: Path) -> sqlite3.Connection:
     return sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True)
 
 
-def setup_status(state_dir: str | Path | None = None) -> dict[str, object]:
+def setup_status(
+    state_dir: str | Path | None = None,
+    *,
+    expected_runtime_identity: str | None = None,
+) -> dict[str, object]:
     """Inspect whether local state is safe and complete enough for retrieval.
 
     This check intentionally never creates ``~/.retriever``, SQLite files, or a
@@ -171,6 +293,9 @@ def setup_status(state_dir: str | Path | None = None) -> dict[str, object]:
         "cadence_integrity": "missing",
         "cadence_plan": None,
         "latest_run": None,
+        "runtime_identity_status": "not_checked",
+        "stored_runtime_identity": "",
+        "requires_reinstall_cleanup": False,
     }
 
     if user_md.is_file():
@@ -281,6 +406,28 @@ def setup_status(state_dir: str | Path | None = None) -> dict[str, object]:
         missing_setup.append("one valid active cadence target")
     if result["active_companies"] == 0:
         missing_setup.append("active company")
+
+    has_live_profile = (
+        result["user_md_integrity"] == "ok"
+        or result["active_companies"] > 0
+        or result["active_targets"] > 0
+        or result["active_jobs"] > 0
+    )
+    if expected_runtime_identity is not None:
+        stored_identity = read_runtime_identity(state)
+        result["stored_runtime_identity"] = stored_identity
+        if not has_live_profile:
+            result["runtime_identity_status"] = "not_applicable"
+        elif not stored_identity:
+            result["runtime_identity_status"] = "missing"
+            result["requires_reinstall_cleanup"] = True
+        elif stored_identity == expected_runtime_identity:
+            result["runtime_identity_status"] = "current"
+        else:
+            result["runtime_identity_status"] = "changed"
+            result["requires_reinstall_cleanup"] = True
+        if result["requires_reinstall_cleanup"]:
+            missing_setup.append("fresh onboarding required before using retained Retriever state")
 
     result["missing_setup"] = missing_setup
     result["fresh_onboarding"] = (

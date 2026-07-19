@@ -1,6 +1,6 @@
 ---
 name: retriever-welcome
-description: Use when a user selects Retriever’s post-install “Start my job search” prompt, starts with “Hey Retriever”, gives a greeting or ambiguous first request, or has just installed or reinstalled Retriever.
+description: Use when a user selects Retriever’s post-install “Start a fresh private job search” prompt, starts with “Hey Retriever”, gives a greeting or ambiguous first request, or has just installed or reinstalled Retriever.
 ---
 
 # Retriever Welcome
@@ -29,6 +29,25 @@ python3 <plugin-root>/scripts/retriever.py setup-status
 
 `<plugin-root>` is the directory two levels above this skill directory. Treat this JSON as the source of truth.
 
+## Post-Install Fresh Start
+
+The post-install starter must be exactly **Start a fresh private job search**. Selecting it is explicit consent to begin a new profile rather than reuse an earlier Retriever profile.
+
+When the starter is selected, or when `setup-status` returns `requires_reinstall_cleanup: true`:
+
+1. Do not read, summarize, report, rank, or reuse any saved profile, target, company, exclusion, job, report, or prior-chat memory.
+2. Run the local fresh-start preparation command before intake:
+
+   ```bash
+   python3 <plugin-root>/scripts/retriever.py reinstall prepare --confirm-fresh-start
+   ```
+
+   It moves only known active Retriever artifacts into a local `prior-installs` backup. The backup is not active state and must never be used during this onboarding.
+3. Run `setup-status` again and require `fresh_onboarding: true` before starting intake.
+4. Begin the fresh welcome below. Do not offer to restore old preferences in this conversation.
+
+If a user expressly says they want to continue an existing profile in a normal, already-installed Retriever chat, use the complete-state path instead. Do not treat a generic greeting as permission to reuse a prior profile after a post-install start.
+
 ## Fresh Onboarding Is a Hard Boundary
 
 When `fresh_onboarding` is true, this is a brand-new Retriever instance.
@@ -50,7 +69,7 @@ Do not lead with a technical status, a command, a source reference, or a six-ite
 
 ### Complete State
 
-If `ready_for_retrieval` is true, greet the user with a compact current-state summary and ask what they want to do: check company sites, change preferences, manage archives, or see a report. Do not start a search just because they said hello.
+Only when the user explicitly asks to continue their saved Retriever profile and `ready_for_retrieval` is true, greet them with a compact current-state summary and ask what they want to do: check company sites, change preferences, manage archives, or see a report. Do not start a search just because they said hello.
 
 ### Incomplete or Damaged State
 

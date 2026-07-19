@@ -47,10 +47,10 @@ Reference: [Build plugins: local marketplace setup](https://learn.chatgpt.com/do
 After installation, start a **new** Codex chat. Bundled skills become available to new chats after a plugin is installed. If Codex shows **Try it now**, select it; otherwise send:
 
 ```text
-Start my job search
+Start a fresh private job search
 ```
 
-Retriever begins with career-coach intake only when there is no valid local profile. It asks for a resume or experience summary, roles, locations, industries, companies, and cadence; it never fills missing search criteria from guesses or prior chat context.
+The post-install starter is intentionally fresh: before career-coach intake, Retriever quarantines any known active local profile under `~/.retriever/prior-installs`, then asks for a resume or experience summary, roles, locations, industries, companies, and cadence. It never fills missing search criteria from guesses, prior chat context, or retained state.
 
 Once onboarding saves and verifies the profile, Retriever creates or updates its one recurring task for the user-approved local-time cadence, reports the active-company count, and asks whether to run the first search. Its estimate is roughly three minutes per active company. It does not open Chrome or start a retrieval run until the user explicitly agrees.
 
@@ -97,7 +97,7 @@ Before using the Plugins UI to uninstall, tell Retriever:
 Uninstall Retriever and delete its schedules.
 ```
 
-Retriever shows and removes only its own schedules after confirmation. Uninstalling the plugin does not delete `~/.retriever`; use Retriever's explicit reset or deletion workflow when you want to remove local profile data, job findings, or reports.
+Retriever shows and removes only its own schedules after confirmation. Codex does not provide a plugin GUI-uninstall callback, so uninstalling the plugin does not delete `~/.retriever` or a scheduled task. On a subsequent install, select **Start a fresh private job search**: Retriever quarantines known active local files under `~/.retriever/prior-installs` before onboarding, and the emptied active state makes any retained Retriever schedule skip retrieval until onboarding updates it. Use Retriever's explicit reset or deletion workflow when you want to permanently remove local profile data, job findings, reports, and backups. Reference: [OpenAI Hooks documentation](https://learn.chatgpt.com/docs/hooks).
 
 For reinstall or first-run testing, ask:
 

@@ -15,6 +15,19 @@ from retriever_core.db import JobInput
 from retriever_core.injection import scan_text
 
 
+def runtime_identity() -> str:
+    """Return the installed Retriever bundle identity without reading user state."""
+    plugin_root = Path(__file__).resolve().parents[1]
+    manifest = plugin_root / ".codex-plugin" / "plugin.json"
+    try:
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return f"retriever@{plugin_root}"
+    name = str(payload.get("name", "retriever")).strip() or "retriever"
+    version = str(payload.get("version", "unknown")).strip() or "unknown"
+    return f"{name}@{version}"
+
+
 def state_dir_from_args(args: argparse.Namespace) -> Path:
     return db.ensure_state_dir(args.state_dir)
 
@@ -23,20 +36,27 @@ def raw_state_dir_from_args(args: argparse.Namespace) -> Path:
     return db.resolve_state_dir(args.state_dir)
 
 
-def _setup_required_response(state_dir: Path) -> dict[str, object]:
+def setup_status_from_args(args: argparse.Namespace) -> dict[str, object]:
+    return db.setup_status(raw_state_dir_from_args(args), expected_runtime_identity=runtime_identity())
+
+
+def _setup_required_response(state_dir: Path, *, expected_runtime_identity: str = "") -> dict[str, object]:
     return {
         "requires_onboarding": True,
         "message": (
             "Retriever is not configured for retrieval. Complete interactive onboarding before scanning career sites; "
             "no retrieval run was created."
         ),
-        "setup": db.setup_status(state_dir),
+        "setup": db.setup_status(
+            state_dir,
+            expected_runtime_identity=expected_runtime_identity or None,
+        ),
     }
 
 
 def cmd_init(args: argparse.Namespace) -> int:
     state_dir = raw_state_dir_from_args(args)
-    setup = db.setup_status(state_dir)
+    setup = setup_status_from_args(args)
     if setup["database_exists"] and setup["database_integrity"] != "ok":
         print(
             db.dump_json(
@@ -55,12 +75,12 @@ def cmd_init(args: argparse.Namespace) -> int:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    print(db.dump_json(db.setup_status(raw_state_dir_from_args(args))))
+    print(db.dump_json(setup_status_from_args(args)))
     return 0
 
 
 def cmd_setup_status(args: argparse.Namespace) -> int:
-    print(db.dump_json(db.setup_status(raw_state_dir_from_args(args))))
+    print(db.dump_json(setup_status_from_args(args)))
     return 0
 
 
@@ -76,7 +96,7 @@ def cmd_schedule_plan(args: argparse.Namespace) -> int:
 
 def cmd_profile_write(args: argparse.Namespace) -> int:
     state_dir = raw_state_dir_from_args(args)
-    setup = db.setup_status(state_dir)
+    setup = setup_status_from_args(args)
     if setup["database_exists"] and setup["database_integrity"] != "ok":
         print(
             db.dump_json(
@@ -94,7 +114,7 @@ def cmd_profile_write(args: argparse.Namespace) -> int:
         payload = json.load(sys.stdin)
     else:
         payload = profile.load_profile_json(args.json)
-    path = profile.write_profile(conn, payload, state_dir=state_dir)
+    path = profile.write_profile(conn, payload, state_dir=state_dir, runtime_identity=runtime_identity())
     print(db.dump_json({"user_md": str(path)}))
     return 0
 
@@ -129,9 +149,9 @@ def cmd_company_archive(args: argparse.Namespace) -> int:
 
 def cmd_run_start(args: argparse.Namespace) -> int:
     state_dir = raw_state_dir_from_args(args)
-    setup = db.setup_status(state_dir)
+    setup = setup_status_from_args(args)
     if not setup["ready_for_retrieval"]:
-        print(db.dump_json(_setup_required_response(state_dir)))
+        print(db.dump_json(_setup_required_response(state_dir, expected_runtime_identity=runtime_identity())))
         return 2
     conn = db.connect(state_dir)
     row = db.create_run(conn, notes=args.notes)
@@ -141,9 +161,9 @@ def cmd_run_start(args: argparse.Namespace) -> int:
 
 def cmd_run_finish(args: argparse.Namespace) -> int:
     state_dir = raw_state_dir_from_args(args)
-    setup = db.setup_status(state_dir)
-    if setup["database_integrity"] != "ok":
-        print(db.dump_json(_setup_required_response(state_dir)))
+    setup = setup_status_from_args(args)
+    if not setup["ready_for_retrieval"]:
+        print(db.dump_json(_setup_required_response(state_dir, expected_runtime_identity=runtime_identity())))
         return 2
     conn = db.connect(state_dir)
     row = db.finish_run(conn, args.run_id, status=args.status, error_count=args.error_count)
@@ -356,8 +376,66 @@ def cmd_reset_state(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_reinstall_prepare(args: argparse.Namespace) -> int:
+    """Quarantine active state so the post-install starter cannot reuse it."""
+    state_dir = raw_state_dir_from_args(args)
+    preview = db.reinstall_prepare_preview(state_dir)
+    if preview.get("state_directory_error"):
+        print(db.dump_json({"requires_repair": True, "message": str(preview["state_directory_error"])}))
+        return 2
+    if not args.confirm_fresh_start:
+        print(
+            db.dump_json(
+                {
+                    "requires_confirmation": True,
+                    "message": (
+                        "This will quarantine the listed active Retriever profile, database, reports, and dashboard "
+                        "artifacts so a new install starts with no active preferences. Retained backup files stay local "
+                        "and will not be used by Retriever. Codex scheduled tasks are unchanged; without active setup, "
+                        "they must skip retrieval. Rerun with --confirm-fresh-start after the user chooses a fresh start."
+                    ),
+                    "would_quarantine_artifacts": preview["active_retriever_artifacts"],
+                    "would_preserve_prior_install_backups": preview["preserved_prior_install_backups"],
+                    "would_preserve_unmanaged_entries": preview["preserved_unmanaged_entries"],
+                    "scheduled_tasks_unchanged": True,
+                }
+            )
+        )
+        return 2
+
+    active = dashboard.active_service(state_dir)
+    if active is not None:
+        if not dashboard.request_stop(active) or not dashboard.wait_for_stop(state_dir):
+            print(
+                db.dump_json(
+                    {
+                        "reinstall_blocked": True,
+                        "message": "Retriever could not stop the managed local dashboard, so retained state was not changed.",
+                        "dashboard_url": f"http://127.0.0.1:{active['port']}/",
+                    }
+                )
+            )
+            return 2
+    try:
+        result = db.quarantine_active_state_for_reinstall(state_dir)
+    except ValueError as exc:
+        print(db.dump_json({"requires_repair": True, "message": str(exc), "state_dir": str(state_dir)}))
+        return 2
+    result["scheduled_tasks_unchanged"] = True
+    result["message"] = (
+        "Retriever active state is quarantined for a fresh onboarding. Any retained backups stay local and are not used "
+        "for the new profile. Retriever scheduled tasks were not changed by this local command."
+    )
+    print(db.dump_json(result))
+    return 0
+
+
 def cmd_report(args: argparse.Namespace) -> int:
-    state_dir = state_dir_from_args(args)
+    state_dir = raw_state_dir_from_args(args)
+    setup = setup_status_from_args(args)
+    if not setup["ready_for_retrieval"]:
+        print(db.dump_json(_setup_required_response(state_dir, expected_runtime_identity=runtime_identity())))
+        return 2
     conn = db.connect(state_dir)
     rows = db.visible_jobs(conn, since=args.since, company=args.company)
     if args.ranked:
@@ -384,13 +462,14 @@ def cmd_report(args: argparse.Namespace) -> int:
 
 def cmd_dashboard_serve(args: argparse.Namespace) -> int:
     state_dir = raw_state_dir_from_args(args)
-    setup = db.setup_status(state_dir)
-    if setup["database_integrity"] != "ok":
+    setup = setup_status_from_args(args)
+    if not setup["ready_for_retrieval"]:
         print(
             db.dump_json(
                 {
                     "requires_valid_database": True,
-                    "message": "Retriever needs a valid local database before it can start the interactive dashboard. No local state was created.",
+                    "requires_valid_setup": True,
+                    "message": "Retriever needs a valid, current local profile and database before it can start the interactive dashboard. No local state was created.",
                     "setup": setup,
                 }
             )
@@ -460,13 +539,14 @@ def cmd_dashboard_serve(args: argparse.Namespace) -> int:
 
 def cmd_dashboard_start(args: argparse.Namespace) -> int:
     state_dir = raw_state_dir_from_args(args)
-    setup = db.setup_status(state_dir)
-    if setup["database_integrity"] != "ok":
+    setup = setup_status_from_args(args)
+    if not setup["ready_for_retrieval"]:
         print(
             db.dump_json(
                 {
                     "requires_valid_database": True,
-                    "message": "Retriever needs a valid local database before it can start the interactive dashboard. No local state was created.",
+                    "requires_valid_setup": True,
+                    "message": "Retriever needs a valid, current local profile and database before it can start the interactive dashboard. No local state was created.",
                     "setup": setup,
                 }
             )
@@ -712,6 +792,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Required to delete the previewed Retriever local-state artifacts.",
     )
     reset_state.set_defaults(func=cmd_reset_state)
+
+    reinstall = sub.add_parser(
+        "reinstall",
+        help="Safely quarantine active Retriever state before a fresh post-install onboarding.",
+    )
+    reinstall_sub = reinstall.add_subparsers(dest="reinstall_command", required=True)
+    reinstall_prepare = reinstall_sub.add_parser(
+        "prepare",
+        help="Preview or quarantine active Retriever state while preserving it in a local prior-install backup.",
+    )
+    reinstall_prepare.add_argument(
+        "--confirm-fresh-start",
+        action="store_true",
+        help="Required after the user explicitly chooses a fresh post-install search.",
+    )
+    reinstall_prepare.set_defaults(func=cmd_reinstall_prepare)
 
     report = sub.add_parser("report", help="Export visible jobs.")
     report.add_argument("--format", choices=["markdown", "csv", "html"], default="markdown")

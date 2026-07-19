@@ -22,8 +22,10 @@ Default local state is `~/.retriever`:
 - `USER.md`.
 - `retriever.sqlite3`.
 - `reports/`.
+- `runtime.json`, which contains only the Retriever bundle identity that saved the active state.
+- `prior-installs/`, which may contain a quarantined prior local profile, reports, and database after a fresh post-install start.
 
-This directory may contain personally identifying job-search information. Do not commit it to Git.
+This directory may contain personally identifying job-search information. Do not commit it to Git. Codex currently provides no plugin GUI-uninstall hook; a Plugins UI uninstall therefore does not delete this directory. On a later install, **Start a fresh private job search** quarantines known active Retriever artifacts before intake, and Retriever does not read the backup. Use the explicit reset flow if you want to permanently delete active state and quarantined backups.
 
 ## Codex and Chrome Controls
 
@@ -37,6 +39,7 @@ The optional interactive dashboard binds only to `127.0.0.1`. Its archive action
 ## References
 
 - [Codex Chrome extension docs](https://learn.chatgpt.com/docs/chrome-extension)
+- [OpenAI Hooks documentation](https://learn.chatgpt.com/docs/hooks)
 - [OpenAI Scheduled tasks documentation](https://learn.chatgpt.com/docs/automations)
 - [Using Retriever with Codex](CODEX.md)
 - [GNU AGPL v3](https://www.gnu.org/licenses/agpl-3.0.en.html)

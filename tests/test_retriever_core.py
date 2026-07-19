@@ -46,6 +46,11 @@ class RetrieverCoreTests(unittest.TestCase):
             "cadence": "Daily at 9:00 AM local time.",
         }
 
+    def current_runtime_identity(self) -> str:
+        manifest_path = ROOT / "plugins" / "retriever" / ".codex-plugin" / "plugin.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        return f"{manifest['name']}@{manifest['version']}"
+
     def test_schema_has_company_job_cascade(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             conn = self.connection(tmp)
@@ -131,6 +136,56 @@ class RetrieverCoreTests(unittest.TestCase):
             targets = db.list_targets(conn)
             self.assertGreaterEqual(len(targets), 4)
 
+    def test_profile_write_replaces_old_preferences_companies_jobs_and_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            first = self.demo_profile()
+            profile.write_profile(conn, first, state_dir=tmp)
+            run = db.create_run(conn, notes="old profile")
+            db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                ),
+                run_id=run["id"],
+            )
+            db.archive_target(conn, "role", "Supply Chain")
+
+            replacement = self.demo_profile()
+            replacement["roles"] = ["Privacy Program Manager"]
+            replacement["industries"] = ["Privacy"]
+            replacement["locations"] = ["New York, NY"]
+            replacement["dream_companies"] = ["Example Privacy Labs"]
+            replacement["companies"] = [
+                {
+                    "name": "Example Privacy Labs",
+                    "careers_url": "https://privacy.example/careers",
+                    "research_url": "https://privacy.example/careers",
+                    "notes": "Fictional replacement company.",
+                }
+            ]
+            replacement["cadence"] = "Weekly on Monday at 8:00 AM local time"
+            profile.write_profile(conn, replacement, state_dir=tmp)
+
+            self.assertEqual(["Example Privacy Labs"], [row["name"] for row in db.list_companies(conn)])
+            self.assertEqual(0, conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0])
+            self.assertEqual(0, conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0])
+            self.assertEqual(0, conn.execute("SELECT COUNT(*) FROM retrieval_runs").fetchone()[0])
+            all_targets = {(row["kind"], row["value"], row["archived"]) for row in db.list_targets(conn, active_only=False)}
+            self.assertEqual(
+                {
+                    ("role", "Privacy Program Manager", 0),
+                    ("industry", "Privacy", 0),
+                    ("location", "New York, NY", 0),
+                    ("company", "Example Privacy Labs", 0),
+                    ("cadence", "Weekly on Monday at 8:00 AM local time", 0),
+                },
+                all_targets,
+            )
+
     def test_setup_status_is_non_mutating_for_missing_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp) / "missing-state"
@@ -170,6 +225,27 @@ class RetrieverCoreTests(unittest.TestCase):
             self.assertFalse(status["fresh_onboarding"])
             self.assertEqual([], status["missing_setup"])
 
+    def test_runtime_identity_blocks_reuse_of_prior_install_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            profile.write_profile(
+                conn,
+                self.demo_profile(),
+                state_dir=tmp,
+                runtime_identity="retriever@prior-install",
+            )
+
+            current = db.setup_status(tmp, expected_runtime_identity="retriever@current-install")
+            self.assertFalse(current["ready_for_retrieval"])
+            self.assertTrue(current["requires_reinstall_cleanup"])
+            self.assertEqual("changed", current["runtime_identity_status"])
+            self.assertIn("fresh onboarding required before using retained Retriever state", current["missing_setup"])
+
+            matching = db.setup_status(tmp, expected_runtime_identity="retriever@prior-install")
+            self.assertTrue(matching["ready_for_retrieval"])
+            self.assertFalse(matching["requires_reinstall_cleanup"])
+            self.assertEqual("current", matching["runtime_identity_status"])
+
     def test_blank_database_with_no_profile_is_fresh_onboarding(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             conn = self.connection(tmp)
@@ -189,6 +265,8 @@ class RetrieverCoreTests(unittest.TestCase):
         self.assertIn("do not use prior-chat memory", welcome.lower())
         self.assertIn("never invent or infer a search criterion", welcome.lower())
         self.assertIn("do not mention internal setup details", welcome.lower())
+        self.assertIn("start a fresh private job search", welcome.lower())
+        self.assertIn("reinstall prepare --confirm-fresh-start", welcome)
 
     def test_onboarding_requests_consent_before_the_first_retrieval(self) -> None:
         onboard = (ROOT / "plugins" / "retriever" / "skills" / "retriever-onboard" / "SKILL.md").read_text(
@@ -250,6 +328,19 @@ class RetrieverCoreTests(unittest.TestCase):
         self.assertIn("Open my Retriever job dashboard.", manifest["interface"]["defaultPrompt"])
         self.assertIn("dashboard start --ranked", report_skill)
         self.assertIn("Always start or reuse", report_skill)
+
+    def test_post_install_starter_is_a_fresh_profile_boundary(self) -> None:
+        manifest = json.loads((ROOT / "plugins" / "retriever" / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        onboard = (ROOT / "plugins" / "retriever" / "skills" / "retriever-onboard" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        retrieve = (ROOT / "plugins" / "retriever" / "skills" / "retriever-retrieve" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertEqual("Start a fresh private job search", manifest["interface"]["defaultPrompt"][0])
+        self.assertIn("reinstall prepare --confirm-fresh-start", onboard)
+        self.assertIn("requires_reinstall_cleanup", retrieve)
 
     def test_profile_requires_companies_and_cadence_before_it_can_be_saved(self) -> None:
         incomplete = self.demo_profile()
@@ -625,6 +716,12 @@ class RetrieverCoreTests(unittest.TestCase):
     def test_dashboard_start_and_stop_manage_a_reusable_local_service(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             conn = self.connection(tmp)
+            profile.write_profile(
+                conn,
+                self.demo_profile(),
+                state_dir=tmp,
+                runtime_identity=self.current_runtime_identity(),
+            )
             db.upsert_job(
                 conn,
                 JobInput(
@@ -672,6 +769,12 @@ class RetrieverCoreTests(unittest.TestCase):
     def test_cli_html_report_writes_dashboard_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             conn = self.connection(tmp)
+            profile.write_profile(
+                conn,
+                self.demo_profile(),
+                state_dir=tmp,
+                runtime_identity=self.current_runtime_identity(),
+            )
             db.upsert_job(
                 conn,
                 JobInput(
@@ -710,7 +813,12 @@ class RetrieverCoreTests(unittest.TestCase):
     def test_ranked_limited_report_discloses_hidden_count(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             conn = self.connection(tmp)
-            profile.write_profile(conn, self.demo_profile(), state_dir=tmp)
+            profile.write_profile(
+                conn,
+                self.demo_profile(),
+                state_dir=tmp,
+                runtime_identity=self.current_runtime_identity(),
+            )
             db.upsert_job(
                 conn,
                 JobInput(
@@ -905,6 +1013,109 @@ class RetrieverCoreTests(unittest.TestCase):
             self.assertFalse((Path(tmp) / "retriever.sqlite3").exists())
             self.assertFalse((Path(tmp) / "reports").exists())
             self.assertTrue(db.setup_status(tmp)["fresh_onboarding"])
+
+    def test_reinstall_prepare_quarantines_active_state_and_keeps_it_inactive(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            profile.write_profile(
+                conn,
+                self.demo_profile(),
+                state_dir=tmp,
+                runtime_identity="retriever@prior-install",
+            )
+            run = db.create_run(conn, notes="prior install")
+            db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                ),
+                run_id=run["id"],
+            )
+            db.finish_run(conn, run["id"])
+            unmanaged = Path(tmp) / "keep-me.txt"
+            unmanaged.write_text("not Retriever state", encoding="utf-8")
+            conn.close()
+
+            preview = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "retriever.py"),
+                    "--state-dir",
+                    tmp,
+                    "reinstall",
+                    "prepare",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(2, preview.returncode, preview.stderr)
+            preview_payload = json.loads(preview.stdout)
+            self.assertTrue(preview_payload["requires_confirmation"])
+            self.assertTrue(preview_payload["scheduled_tasks_unchanged"])
+            self.assertTrue(preview_payload["would_quarantine_artifacts"])
+
+            prepared = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "retriever.py"),
+                    "--state-dir",
+                    tmp,
+                    "reinstall",
+                    "prepare",
+                    "--confirm-fresh-start",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            result = json.loads(prepared.stdout)
+            backup = Path(result["prior_install_backup"])
+            self.assertTrue(result["fresh_onboarding"])
+            self.assertTrue(result["scheduled_tasks_unchanged"])
+            self.assertTrue(backup.is_dir())
+            self.assertTrue((backup / "USER.md").is_file())
+            self.assertTrue((backup / "retriever.sqlite3").is_file())
+            self.assertTrue((backup / "runtime.json").is_file())
+            self.assertFalse((Path(tmp) / "USER.md").exists())
+            self.assertFalse((Path(tmp) / "retriever.sqlite3").exists())
+            self.assertTrue(unmanaged.exists())
+
+            status = db.setup_status(tmp, expected_runtime_identity="retriever@current-install")
+            self.assertTrue(status["fresh_onboarding"])
+            self.assertFalse(status["ready_for_retrieval"])
+            self.assertFalse(status["requires_reinstall_cleanup"])
+
+    def test_report_refuses_prior_install_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            profile.write_profile(
+                conn,
+                self.demo_profile(),
+                state_dir=tmp,
+                runtime_identity="retriever@deliberately-different",
+            )
+            conn.close()
+
+            report = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "retriever.py"),
+                    "--state-dir",
+                    tmp,
+                    "report",
+                    "--format",
+                    "csv",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(2, report.returncode, report.stderr)
+            payload = json.loads(report.stdout)
+            self.assertTrue(payload["requires_onboarding"])
+            self.assertTrue(payload["setup"]["requires_reinstall_cleanup"])
 
     def test_target_archive_cli_requires_force_after_preview(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

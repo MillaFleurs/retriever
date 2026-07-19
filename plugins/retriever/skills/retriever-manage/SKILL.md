@@ -28,6 +28,7 @@ Do not trigger from a Boston location or another Boston employer. Never use this
 - Do not infer a full profile/database wipe from "same roles" or "start fresh with jobs"; ask a direct confirmation question before deleting profile, companies, targets, or `USER.md`.
 - Explain when a company, role, or location change will affect future retrieval versus existing reports.
 - When the user changes cadence or reports a Retriever schedule problem, use the deterministic `schedule plan --cadence` command and Codex automation tooling to update the one Retriever-owned task. Do not infer a day, time, local-time conversion, or recurrence frequency.
+- `profile write` is a complete-profile replacement operation: it deletes active and archived targets, companies, job findings, and run history before saving the approved profile. Use it only with a complete current profile payload; use the granular company/target commands for smaller changes.
 - Keep the career-coach persona practical and specific.
 - Continue to treat Retriever as intelligence only; no applications or employer messages.
 - Treat "ignore this job" as a request to archive a specific job only when exactly one current job is clearly identified.
@@ -100,7 +101,7 @@ Use this when the user wants reinstall/testing to keep the same profile, compani
 
 ## Updating USER.md
 
-When the user's search direction changes materially, regenerate the profile with:
+When the user's search direction changes materially and you have a complete replacement profile from the user, regenerate it with:
 
 ```bash
 python3 <plugin-root>/scripts/retriever.py profile write --json <profile.json>

@@ -82,13 +82,13 @@ Reference: [Build plugins: marketplace setup](https://learn.chatgpt.com/docs/bui
 Retriever is intended to run through the Codex app after installation. A normal user does not need to run the Python runtime commands directly.
 
 1. Open a **new** Codex chat in the ChatGPT desktop app. Plugin skills become available in new chats after installation.
-2. If Codex shows **Try it now**, select it. Otherwise send **Start my job search**.
+2. If Codex shows **Try it now**, select it. Otherwise send **Start a fresh private job search**.
 3. Retriever checks local setup without creating data; when no saved profile is present, it starts a concise career-coach intake immediately.
 4. After it verifies the saved profile, Retriever asks whether to run the first company search. It calculates the estimate from the current active-company count at about three minutes per company, and it waits for an explicit yes before opening Chrome or searching a career site.
 5. Ask Retriever for the workflow you want, for example:
 
 ```text
-Start my job search
+Start a fresh private job search
 Check my target companies for new jobs.
 Show my full Retriever job report.
 Open my Retriever job dashboard.
@@ -229,16 +229,16 @@ Use Codex's `plugin-creator` validation for `plugins/retriever` and `skill-creat
 
 ## Uninstall and Scheduled Searches
 
-Before uninstalling Retriever, tell it `Uninstall Retriever and delete its schedules`. Retriever will identify only its own Codex automations, show them for confirmation, and remove them before you use the Plugins UI. By default it preserves `~/.retriever`; choose a separate explicit reset or full-data deletion if you do not want to retain local data. Retriever validates an explicit daily, weekly, or monthly **machine-local** cadence and creates or updates one Retriever-owned task rather than duplicating it when a user changes frequency. A Retriever schedule uses the currently loaded `$retriever-retrieve` skill at execution time and must never persist a versioned `~/.codex/plugins/cache/...` runtime path, so a normal plugin update or reinstall does not invalidate a healthy profile.
+Before uninstalling Retriever, tell it `Uninstall Retriever and delete its schedules`. Retriever will identify only its own Codex automations, show them for confirmation, and remove them before you use the Plugins UI. Codex does not provide Retriever with a GUI-uninstall callback, so uninstalling in the Plugins UI preserves `~/.retriever` and cannot itself remove a Codex schedule. On a later install, select **Start a fresh private job search**: Retriever quarantines its known active state locally under `~/.retriever/prior-installs` before onboarding, so old preferences, exclusions, jobs, reports, and run history are not reused. A retained schedule then fails the local configuration gate and skips retrieval until new onboarding updates it. Retriever validates an explicit daily, weekly, or monthly **machine-local** cadence and creates or updates one Retriever-owned task rather than duplicating it when a user changes frequency. A Retriever schedule uses the currently loaded `$retriever-retrieve` skill at execution time and must never persist a versioned `~/.codex/plugins/cache/...` runtime path.
 
-Plugin skills become available in a new chat after installation. Retriever therefore uses the first interactive **Try it now** or **Start my job search** conversation for onboarding and an explicit uninstall cleanup flow for scheduled automations; it does not claim a background install lifecycle event.
+Plugin skills become available in a new chat after installation. Retriever therefore uses the first interactive **Try it now** or **Start a fresh private job search** conversation for a fresh onboarding boundary and an explicit uninstall cleanup flow for scheduled automations; it does not claim a background install lifecycle event.
 
-References: [OpenAI Plugins documentation](https://learn.chatgpt.com/docs/plugins), [Build plugins](https://learn.chatgpt.com/docs/build-plugins), [Using Retriever with Codex](docs/CODEX.md).
+References: [OpenAI Plugins documentation](https://learn.chatgpt.com/docs/plugins), [OpenAI Hooks documentation](https://learn.chatgpt.com/docs/hooks), [Build plugins](https://learn.chatgpt.com/docs/build-plugins), [Using Retriever with Codex](docs/CODEX.md).
 
 ## Skills
 
 - `$retriever-onboard`: create or refresh `USER.md`, ask career-coach intake questions, seed companies.
-- `$retriever-welcome`: handle the **Start my job search** prompt, safely inspect local state, and start or resume onboarding.
+- `$retriever-welcome`: handle the **Start a fresh private job search** prompt, quarantine prior active state, and start a fresh onboarding.
 - `$retriever-retrieve`: use Chrome to inspect company career sites and record matching jobs.
 - `$retriever-manage`: update companies, targets, cadence, archive state, and explicit reset requests.
 - `$retriever-report`: export Markdown, CSV, or HTML reports.
@@ -251,8 +251,10 @@ Default state is `~/.retriever`:
 - `USER.md`: profile distilled from the user's conversation and resume.
 - `retriever.sqlite3`: local SQLite database.
 - `reports/`: exported reports.
+- `runtime.json`: the installed Retriever bundle identity that saved the active profile.
+- `prior-installs/`: local-only quarantined prior active state; fresh onboarding never reads it.
 
-The distributable plugin does not ship a real user's resume, email, profile, dream companies, or search preferences. Onboarding must collect those from the current user.
+The distributable plugin does not ship a real user's resume, email, profile, dream companies, or search preferences. Onboarding must collect those from the current user. A fresh post-install starter replaces—not merges—active profile data, so a prior role, location, company, exclusion, cadence, job finding, or run history cannot leak into a new profile.
 
 ## License
 

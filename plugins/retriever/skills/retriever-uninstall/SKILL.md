@@ -19,7 +19,7 @@ Show the exact matching schedule names and cadence. Ask for confirmation before 
 
 After schedules are removed, ask separately what should happen to `~/.retriever`:
 
-1. Keep it for a later reinstall.
+1. Keep it locally for a later reinstall. The post-install fresh starter will quarantine it before onboarding, so it is not reused as active preferences.
 2. Reset job findings only, preserving `USER.md`, companies, and targets.
 3. Delete all Retriever local data after the user confirms the exact directory and data types.
 
@@ -47,6 +47,12 @@ When the user says they are reinstalling, testing first-run onboarding, or asks 
 
 The `reset state` runtime command is deliberately local-only. If a user runs it outside Retriever's interactive cleanup flow, it leaves schedules unchanged and says so; never claim a schedule was removed unless automation tooling confirmed it.
 
+## GUI Uninstall and Later Reinstall
+
+Codex currently exposes no documented plugin-uninstall hook, so the Plugins UI cannot run this cleanup skill after Retriever is removed. Do not claim that a GUI uninstall deletes schedules or local files.
+
+On the next install, tell the user to select **Start a fresh private job search**. That starter quarantines known active Retriever state before onboarding, so earlier preferences, exclusions, job findings, and report data are not loaded into the new profile. It cannot delete a Codex automation by itself; if a prior Retriever schedule remains, the missing active profile makes its configuration gate skip retrieval until the new onboarding updates or replaces the schedule.
+
 ## Final Step
 
-Tell the user they can now uninstall Retriever in the Codex Plugins UI. Explain that a later install followed by **Start my job search** will inspect any retained state and either continue setup or begin a fresh onboarding conversation.
+Tell the user they can now uninstall Retriever in the Codex Plugins UI. Explain that a later install followed by **Start a fresh private job search** creates a fresh onboarding conversation and does not reuse retained preferences.
