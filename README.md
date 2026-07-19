@@ -13,7 +13,7 @@ The first implementation target is macOS. Retriever stores local user data in `~
 Retriever is an intelligence and reconnaissance tool only.
 
 - It reads and reviews company career sites.
-- It records companies, jobs, targets, retrieval runs, and observations in SQLite.
+- It records companies, jobs, targets, retrieval runs, and observations in SQLite, preserving first/last sightings and explicit local archive decisions across rescans.
 - It warns about career-page prompt-injection patterns.
 - It exports Markdown, CSV, static HTML reports, and a managed loopback-only interactive dashboard for local job review and archiving.
 - It does not submit applications, send employer messages, rewrite resumes for listings, or click final application controls.
@@ -131,6 +131,14 @@ python3 plugins/retriever/scripts/retriever.py schedule plan --cadence "Weekly o
 ```
 
 Supported forms are daily at a time, weekly on a weekday at a time, and monthly on a calendar day at a time. Codex Scheduled runs RRULEs in the machine's local timezone, so Retriever requires an explicit local-time confirmation and never silently converts a named timezone.
+
+After the user approves a cadence change, update only that preference without replacing their local job CRM:
+
+```bash
+python3 plugins/retriever/scripts/retriever.py profile set-cadence --cadence "Weekly on Monday at 8:00 AM local time"
+```
+
+This preserves job findings, first/last sightings, archive decisions, observations, retrieval-run history, companies, and all non-cadence targets.
 
 Use a temporary state directory for demos or tests:
 

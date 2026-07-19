@@ -27,7 +27,7 @@ Do not trigger from a Boston location or another Boston employer. Never use this
 - A job-findings reset deletes jobs, observations, and retrieval-run history while preserving `USER.md`, companies, and targets.
 - Do not infer a full profile/database wipe from "same roles" or "start fresh with jobs"; ask a direct confirmation question before deleting profile, companies, targets, or `USER.md`.
 - Explain when a company, role, or location change will affect future retrieval versus existing reports.
-- When the user changes cadence or reports a Retriever schedule problem, use the deterministic `schedule plan --cadence` command and Codex automation tooling to update the one Retriever-owned task. Do not infer a day, time, local-time conversion, or recurrence frequency.
+- When the user changes cadence or reports a Retriever schedule problem, use the deterministic `schedule plan --cadence` command and Codex automation tooling to update the one Retriever-owned task. Do not infer a day, time, local-time conversion, or recurrence frequency. A cadence-only change must preserve the local CRM history—jobs, observations, retrieval runs, and explicit archives—and must never use `profile write` as a shortcut.
 - `profile write` is a complete-profile replacement operation: it deletes active and archived targets, companies, job findings, and run history before saving the approved profile. Use it only with a complete current profile payload; use the granular company/target commands for smaller changes.
 - Keep the career-coach persona practical and specific.
 - Continue to treat Retriever as intelligence only; no applications or employer messages.
@@ -120,3 +120,11 @@ python3 <plugin-root>/scripts/retriever.py schedule plan --cadence "<user-approv
 ```
 
 Use the returned `rrule` exactly. Update the existing Retriever-owned Codex automation when found; create one only if none exists. Preserve its project, model, notification settings, and all non-cadence settings. Codex Scheduled runs this rule in the machine's local timezone. Use the version-agnostic task template from `$retriever-retrieve`; never persist a versioned plugin-cache path. If the cadence changes, the profile runtime keeps exactly one active cadence target so future schedules and reports cannot silently use an older recurrence.
+
+After the user approves the cadence, update the saved cadence without replacing the complete profile:
+
+```bash
+python3 <plugin-root>/scripts/retriever.py profile set-cadence --cadence "<user-approved cadence>"
+```
+
+This command updates only the cadence target and the cadence section of `USER.md`; it preserves the user's jobs, archive decisions, observations, retrieval runs, companies, and other targets.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from . import db, schedule
@@ -153,6 +154,48 @@ def write_profile(
                 )
 
     path.write_text(profile_to_markdown(profile, state_dir=state_dir), encoding="utf-8")
+    if runtime_identity:
+        db.write_runtime_identity(state_dir, runtime_identity)
+    return path
+
+
+def update_cadence(
+    conn,
+    cadence: str,
+    *,
+    state_dir: str | Path | None = None,
+    runtime_identity: str = "",
+) -> Path:
+    """Update only cadence state while preserving the local CRM history."""
+    normalized_cadence = cadence.strip()
+    schedule.require_local_time(normalized_cadence)
+    path = db.user_md_path(state_dir)
+    try:
+        existing_markdown = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError("Retriever needs an existing USER.md before changing cadence") from exc
+
+    cadence_section = re.compile(r"(?ms)(^## Retrieval Cadence\s*\n\s*).*?(?=^## Safety Rules\s*$)")
+    if cadence_section.search(existing_markdown) is None:
+        raise ValueError("Retriever USER.md has no retrieval-cadence section to update")
+    updated_markdown = cadence_section.sub(rf"\g<1>{normalized_cadence}\n\n", existing_markdown, count=1)
+
+    timestamp = db.now_utc()
+    with conn:
+        conn.execute(
+            "UPDATE targets SET archived = 1, updated_at = ? WHERE kind = 'cadence' AND archived = 0",
+            (timestamp,),
+        )
+        conn.execute(
+            """
+            INSERT INTO targets (kind, value, created_at, updated_at, archived)
+            VALUES ('cadence', ?, ?, ?, 0)
+            ON CONFLICT(kind, value) DO UPDATE SET archived = 0, updated_at = excluded.updated_at
+            """,
+            (normalized_cadence, timestamp, timestamp),
+        )
+
+    path.write_text(updated_markdown, encoding="utf-8")
     if runtime_identity:
         db.write_runtime_identity(state_dir, runtime_identity)
     return path

@@ -763,7 +763,7 @@ def upsert_job(
             UPDATE jobs
             SET title = ?, location = ?, work_mode = ?, function = ?, url = ?,
                 source_url = ?, description = ?, prompt_injection_warning = ?,
-                last_seen_at = ?, posted_at = ?, archived = 0
+                last_seen_at = ?, posted_at = ?
             WHERE id = ?
             """,
             (

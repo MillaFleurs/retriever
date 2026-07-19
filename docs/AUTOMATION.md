@@ -26,7 +26,7 @@ Codex Scheduled's current task interface accepts an RRULE but does not expose a 
 python3 plugins/retriever/scripts/retriever.py schedule plan --cadence "<user-approved cadence>"
 ```
 
-The command returns `valid`, `scheduler_timezone: local`, and the exact Codex wall-clock `rrule`. The automation creator must use that `rrule` unchanged. It must update an existing Retriever-owned task rather than create a duplicate when the user switches among daily, weekly, or monthly. The cadence itself authorizes the recurring task; it does not authorize an immediate first company-site scan.
+The command returns `valid`, `scheduler_timezone: local`, and the exact Codex wall-clock `rrule`. The automation creator must use that `rrule` unchanged. It must update an existing Retriever-owned task rather than create a duplicate when the user switches among daily, weekly, or monthly. After the user approves the change, it must save the matching cadence with `profile set-cadence --cadence "<user-approved cadence>"`, rather than using the destructive full-profile writer. That granular update preserves jobs, explicit archives, observations, retrieval-run history, companies, and non-cadence targets. The cadence itself authorizes the recurring task; it does not authorize an immediate first company-site scan.
 
 ## Repair a Missing-Runtime Error
 

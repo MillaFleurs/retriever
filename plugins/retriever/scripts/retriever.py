@@ -119,6 +119,36 @@ def cmd_profile_write(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_profile_set_cadence(args: argparse.Namespace) -> int:
+    """Change only the saved cadence, preserving Retriever's local CRM history."""
+    state_dir = raw_state_dir_from_args(args)
+    setup = setup_status_from_args(args)
+    if not setup["ready_for_retrieval"]:
+        print(db.dump_json(_setup_required_response(state_dir, expected_runtime_identity=runtime_identity())))
+        return 2
+    conn = db.connect(state_dir)
+    try:
+        path = profile.update_cadence(
+            conn,
+            args.cadence,
+            state_dir=state_dir,
+            runtime_identity=runtime_identity(),
+        )
+    except ValueError as exc:
+        print(db.dump_json({"valid": False, "message": str(exc)}))
+        return 2
+    print(
+        db.dump_json(
+            {
+                "cadence": args.cadence,
+                "user_md": str(path),
+                "crm_history_preserved": True,
+            }
+        )
+    )
+    return 0
+
+
 def cmd_company_add(args: argparse.Namespace) -> int:
     conn = db.connect(state_dir_from_args(args))
     row = db.add_company(
@@ -701,6 +731,12 @@ def build_parser() -> argparse.ArgumentParser:
     profile_write = profile_sub.add_parser("write", help="Write USER.md from a JSON profile.")
     profile_write.add_argument("--json", required=True, help="Profile JSON path, or '-' for stdin.")
     profile_write.set_defaults(func=cmd_profile_write)
+    profile_cadence = profile_sub.add_parser(
+        "set-cadence",
+        help="Update only the saved cadence while preserving jobs, archives, observations, and retrieval runs.",
+    )
+    profile_cadence.add_argument("--cadence", required=True)
+    profile_cadence.set_defaults(func=cmd_profile_set_cadence)
 
     company = sub.add_parser("company", help="Manage companies.")
     company_sub = company.add_subparsers(dest="company_command", required=True)

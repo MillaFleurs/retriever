@@ -83,7 +83,7 @@ Retriever creates recurring checks through Codex **Scheduled** only after the us
 
 Use the Retriever conversation to request a schedule, or open the Scheduled create flow in the desktop app. Local job checks depend on Codex, Chrome, and the user's machine/session being available at run time.
 
-Use a cadence such as `Daily at 8:00 AM local time`, `Weekly on Monday at 8:00 AM local time`, or `Monthly on day 15 at 8:00 AM local time`. Retriever validates that wording before creating the task and updates the existing Retriever task rather than creating duplicates. Codex Scheduled uses the machine's local timezone for the RRULE; if you name another timezone, Retriever asks you to confirm the equivalent local time rather than silently converting it.
+Use a cadence such as `Daily at 8:00 AM local time`, `Weekly on Monday at 8:00 AM local time`, or `Monthly on day 15 at 8:00 AM local time`. Retriever validates that wording before creating the task and updates the existing Retriever task rather than creating duplicates. It updates only the saved cadence, not the complete profile, so job findings, archive decisions, observations, and retrieval-run history remain intact. Codex Scheduled uses the machine's local timezone for the RRULE; if you name another timezone, Retriever asks you to confirm the equivalent local time rather than silently converting it.
 
 If a scheduled run names a missing versioned Retriever cache directory, that error alone does not mean the saved job-search profile is stale. Ask Retriever to repair the daily schedule; it should check the active profile through the current skill, update only the Retriever-owned task while preserving its schedule settings, and not trigger a scan during the repair.
 

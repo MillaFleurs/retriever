@@ -94,6 +94,49 @@ class RetrieverCoreTests(unittest.TestCase):
             self.assertFalse(second_inserted)
             self.assertEqual(first["id"], second["id"])
 
+    def test_rescan_preserves_an_explicit_job_archive_and_records_history(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            first_run = db.create_run(conn, notes="first scheduled retrieval")
+            first, inserted = db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                    url="https://example.com/careers/technical-program-manager",
+                ),
+                run_id=first_run["id"],
+            )
+            self.assertTrue(inserted)
+            self.assertEqual(1, db.archive_job(conn, first["id"]))
+            conn.execute("UPDATE jobs SET last_seen_at = ? WHERE id = ?", ("2000-01-01T00:00:00Z", first["id"]))
+            conn.commit()
+
+            second_run = db.create_run(conn, notes="second scheduled retrieval")
+            rescanned, inserted = db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                    url="https://example.com/careers/technical-program-manager",
+                ),
+                run_id=second_run["id"],
+            )
+
+            self.assertFalse(inserted)
+            self.assertEqual(first["id"], rescanned["id"])
+            self.assertEqual(1, rescanned["archived"])
+            self.assertGreater(rescanned["last_seen_at"], "2000-01-01T00:00:00Z")
+            self.assertEqual(0, len(db.visible_jobs(conn)))
+            observations = conn.execute(
+                "SELECT run_id, is_new FROM observations WHERE job_id = ? ORDER BY id", (first["id"],)
+            ).fetchall()
+            self.assertEqual([(first_run["id"], 1), (second_run["id"], 0)], [tuple(row) for row in observations])
+
     def test_archived_company_job_and_target_are_hidden_from_reports(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             conn = self.connection(tmp)
@@ -185,6 +228,58 @@ class RetrieverCoreTests(unittest.TestCase):
                 },
                 all_targets,
             )
+
+    def test_profile_set_cadence_preserves_local_crm_history(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = self.connection(tmp)
+            profile.write_profile(
+                conn,
+                self.demo_profile(),
+                state_dir=tmp,
+                runtime_identity=self.current_runtime_identity(),
+            )
+            run = db.create_run(conn, notes="first scheduled retrieval")
+            job, _ = db.upsert_job(
+                conn,
+                JobInput(
+                    company="Example AI Labs",
+                    title="Technical Program Manager",
+                    location="Remote",
+                    source_url="https://example.com/careers",
+                ),
+                run_id=run["id"],
+            )
+            self.assertEqual(1, db.archive_job(conn, job["id"]))
+
+            changed = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "retriever.py"),
+                    "--state-dir",
+                    tmp,
+                    "profile",
+                    "set-cadence",
+                    "--cadence",
+                    "Weekly on Monday at 8:00 AM local time",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            payload = json.loads(changed.stdout)
+            self.assertTrue(payload["crm_history_preserved"])
+            self.assertEqual(
+                ["Weekly on Monday at 8:00 AM local time"],
+                [row["value"] for row in db.list_targets(conn) if row["kind"] == "cadence"],
+            )
+            self.assertEqual(1, conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0])
+            self.assertEqual(1, conn.execute("SELECT COUNT(*) FROM jobs WHERE archived = 1").fetchone()[0])
+            self.assertEqual(1, conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0])
+            self.assertEqual(1, conn.execute("SELECT COUNT(*) FROM retrieval_runs").fetchone()[0])
+            user_md = (Path(tmp) / "USER.md").read_text(encoding="utf-8")
+            self.assertIn("Weekly on Monday at 8:00 AM local time", user_md)
+            self.assertNotIn("Daily at 9:00 AM local time.", user_md)
 
     def test_setup_status_is_non_mutating_for_missing_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
